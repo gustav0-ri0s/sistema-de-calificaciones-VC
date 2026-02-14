@@ -1,0 +1,5 @@
+{
+  "name": "Módulo de Calificaciones - Valores y Ciencias",
+  "description": "Sistema de registro de calificaciones alineado al Currículo Nacional (CNEB) con soporte para autoguardado, apreciaciones descriptivas y rol de tutor.",
+  "requestFramePermissions": []
+}
