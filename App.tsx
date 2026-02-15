@@ -76,6 +76,21 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch Appreciations and Tutor Data when Bimestre Changes
+  useEffect(() => {
+    if (selectedBimestre) {
+      fetchAppreciations(selectedBimestre.id);
+      fetchTutorData(selectedBimestre.id);
+    }
+  }, [selectedBimestre]);
+
+  // Fetch Grades when Course or Bimestre Changes
+  useEffect(() => {
+    if (selectedCourse && selectedBimestre) {
+      fetchGrades(selectedCourse.classroomId, selectedBimestre.id);
+    }
+  }, [selectedCourse, selectedBimestre]);
+
   const fetchBimestres = async () => {
     setLoadingBimestres(true);
     try {
@@ -228,6 +243,88 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchAppreciations = async (bimestreId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('student_appreciations')
+        .select('*')
+        .eq('bimestre_id', parseInt(bimestreId));
+
+      if (error) {
+        console.error('Error fetching appreciations:', error);
+        return;
+      }
+
+      if (data) {
+        const mappedAppreciations: AppreciationEntry[] = data.map((a: any) => ({
+          studentId: a.student_id,
+          comment: a.comment || '',
+          isApproved: a.is_approved || false
+        }));
+        setAppreciations(mappedAppreciations);
+      }
+    } catch (err) {
+      console.error('Error in fetchAppreciations:', err);
+    }
+  };
+
+  const fetchGrades = async (classroomId: number, bimestreId: string) => {
+    try {
+      // Get students first to filter grades
+      const { data: sData } = await supabase.from('students').select('id').eq('classroom_id', classroomId);
+      const sIds = sData?.map(s => s.id) || [];
+
+      if (sIds.length === 0) {
+        setGrades([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('student_grades')
+        .select('*')
+        .eq('bimestre_id', parseInt(bimestreId))
+        .in('student_id', sIds);
+
+      if (error) throw error;
+
+      if (data) {
+        setGrades(data.map((g: any) => ({
+          studentId: g.student_id,
+          courseId: selectedCourse?.id || '',
+          competencyId: g.competency_id.toString(),
+          grade: g.grade as GradeLevel
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching grades:', err);
+    }
+  };
+
+  const fetchTutorData = async (bimestreId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('student_behavior_grades')
+        .select('*')
+        .eq('bimestre_id', parseInt(bimestreId));
+
+      if (error) {
+        console.error('Error fetching behavior grades:', error);
+        return;
+      }
+
+      if (data) {
+        const mappedTutorData: TutorValues[] = data.map((t: any) => ({
+          studentId: t.student_id,
+          comportamiento: (t.behavior_grade || '') as GradeLevel,
+          tutoriaValores: (t.values_grade || '') as GradeLevel
+        }));
+        setTutorData(mappedTutorData);
+      }
+    } catch (err) {
+      console.error('Error in fetchTutorData:', err);
+    }
+  };
+
 
   const tutorSections = useMemo(() => {
     // Unique classrooms where isTutor is true
@@ -284,12 +381,31 @@ const App: React.FC = () => {
     setStudents([]);
   };
 
-  const updateGrade = (studentId: string, competencyId: string, grade: GradeLevel) => {
+  const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel) => {
     if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
+
+    // Optimistic Update
     setGrades(prev => {
       const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === competencyId));
       return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId, grade }];
     });
+
+    if (!selectedBimestre) return;
+
+    try {
+      const { error } = await supabase.from('student_grades').upsert({
+        student_id: studentId,
+        competency_id: parseInt(competencyId),
+        bimestre_id: parseInt(selectedBimestre.id),
+        grade: grade,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'student_id, competency_id, bimestre_id' });
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error saving grade:', err);
+      // Optional: Revert optimistic update if needed
+    }
   };
 
   const updateFamilyEvaluation = (studentId: string, commitmentId: string, grade: GradeLevel) => {
@@ -300,38 +416,111 @@ const App: React.FC = () => {
     });
   };
 
-  const updateAppreciation = (studentId: string, comment: string) => {
-    if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
+  const updateAppreciation = async (studentId: string, comment: string) => {
+    if (selectedBimestre?.isLocked) return;
+
+    // Changes by Docente invalidate approval
+    const shouldResetApproval = currentUserRole === 'Docente';
+
+    // Optimistic Update
     setAppreciations(prev => {
       const existing = prev.find(a => a.studentId === studentId);
       const filtered = prev.filter(a => a.studentId !== studentId);
       return [...filtered, {
         studentId,
         comment,
-        isApproved: existing ? existing.isApproved : false
+        isApproved: shouldResetApproval ? false : (existing ? existing.isApproved : false)
       }];
     });
+
+    if (!selectedBimestre) return;
+
+    try {
+      const currentApp = appreciations.find(a => a.studentId === studentId);
+      // If Docente, force false. If not, preserve existing (or default false if new)
+      const isApprovedState = shouldResetApproval ? false : (currentApp?.isApproved || false);
+
+      await supabase
+        .from('student_appreciations')
+        .upsert({
+          student_id: studentId,
+          bimestre_id: parseInt(selectedBimestre.id),
+          comment: comment,
+          is_approved: isApprovedState,
+          tutor_id: userId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, bimestre_id' });
+
+    } catch (err) {
+      console.error('Error saving appreciation:', err);
+      // Optional: Revert state on error
+    }
   };
 
-  const approveAppreciation = (studentId: string) => {
+  const approveAppreciation = async (studentId: string) => {
     if (currentUserRole !== 'Supervisor' && currentUserRole !== 'Administrador') return;
+
+    // Find current status to toggle
+    const currentApp = appreciations.find(a => a.studentId === studentId);
+    if (!currentApp) return; // Can't approve non-existent appreciation (or empty)
+
+    const newStatus = !currentApp.isApproved;
+
+    // Optimistic Update
     setAppreciations(prev => {
-      const existing = prev.find(a => a.studentId === studentId);
-      if (!existing) {
-        return [...prev, { studentId, comment: '', isApproved: true }];
-      }
-      return prev.map(a => a.studentId === studentId ? { ...a, isApproved: !a.isApproved } : a);
+      return prev.map(a => a.studentId === studentId ? { ...a, isApproved: newStatus } : a);
     });
+
+    if (!selectedBimestre) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_appreciations')
+        .update({ is_approved: newStatus, updated_at: new Date().toISOString() })
+        .eq('student_id', studentId)
+        .eq('bimestre_id', parseInt(selectedBimestre.id));
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error approving appreciation:', err);
+      // Revert
+      setAppreciations(prev => prev.map(a => a.studentId === studentId ? { ...a, isApproved: !newStatus } : a));
+    }
   };
 
-  const updateTutorData = (studentId: string, field: 'comportamiento' | 'tutoriaValores', value: string) => {
+  const updateTutorData = async (studentId: string, field: 'comportamiento' | 'tutoriaValores', value: string) => {
     if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
+
+    // Optimistic Update
     setTutorData(prev => {
       const existing = prev.find(t => t.studentId === studentId) || { studentId, comportamiento: '' as GradeLevel, tutoriaValores: '' as GradeLevel };
       const updated = { ...existing, [field]: value as GradeLevel };
       const filtered = prev.filter(t => t.studentId !== studentId);
       return [...filtered, updated];
     });
+
+    if (!selectedBimestre) return;
+
+    try {
+      // Prepare data for upsert
+      const currentTutor = tutorData.find(t => t.studentId === studentId) || { comportamiento: '', tutoriaValores: '' };
+      const behaviorGrade = field === 'comportamiento' ? value : currentTutor.comportamiento;
+      const valuesGrade = field === 'tutoriaValores' ? value : currentTutor.tutoriaValores;
+
+      const { error } = await supabase
+        .from('student_behavior_grades')
+        .upsert({
+          student_id: studentId,
+          bimestre_id: parseInt(selectedBimestre.id),
+          behavior_grade: behaviorGrade,
+          values_grade: valuesGrade,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, bimestre_id' });
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error updating tutor data:', err);
+    }
   };
 
   if (!currentUserRole) {
@@ -383,11 +572,12 @@ const App: React.FC = () => {
                 role={currentUserRole}
                 bimestre={selectedBimestre}
                 allBimestres={bimestres}
-                onBimestreChange={setSelectedBimestre}
+                onBimestreChange={(b) => setSelectedBimestre(b)}
                 grades={grades}
                 appreciations={appreciations}
                 tutorData={tutorData}
                 onApproveAppreciation={approveAppreciation}
+                onUpdateAppreciation={updateAppreciation}
                 familyCommitments={familyCommitments}
                 familyEvaluations={familyEvaluations}
               />
@@ -410,10 +600,10 @@ const App: React.FC = () => {
                           if (!b.isLocked) setSelectedBimestre(b);
                         }}
                         className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
-                            ? 'bg-institutional text-white shadow-md'
-                            : b.isLocked
-                              ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
-                              : 'text-gray-400 hover:bg-gray-100'
+                          ? 'bg-institutional text-white shadow-md'
+                          : b.isLocked
+                            ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
+                            : 'text-gray-400 hover:bg-gray-100'
                           }`}
                       >
                         {b.label} {b.isLocked && <Lock size={12} />}

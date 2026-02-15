@@ -216,8 +216,8 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                         <button
                           onClick={() => setActiveCommentStudent(student)}
                           className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl font-black text-xs uppercase tracking-widest border-2 transition-all ${appreciation.comment.trim() !== ''
-                              ? 'bg-institutional border-institutional text-institutional shadow-md'
-                              : 'bg-white border-gray-200 text-gray-400'
+                            ? 'bg-institutional border-institutional text-institutional shadow-md'
+                            : 'bg-white border-gray-200 text-gray-400'
                             }`}
                         >
                           <MessageSquare size={16} />
@@ -228,8 +228,8 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                           <button
                             onClick={() => onApproveAppreciation(student.id)}
                             className={`px-4 rounded-xl border-2 transition-all ${appreciation.isApproved
-                                ? 'bg-rose-500 border-rose-600 text-white'
-                                : 'bg-green-600 border-green-700 text-white shadow-md shadow-green-200'
+                              ? 'bg-rose-500 border-rose-600 text-white'
+                              : 'bg-green-600 border-green-700 text-white shadow-md shadow-green-200'
                               }`}
                           >
                             <CheckCircle2 size={20} />
@@ -271,7 +271,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                   <>
                     <th className="p-8 text-[10px] font-black text-amber-700 uppercase tracking-widest w-40 border-l border-amber-100">Conducta</th>
                     <th className="p-8 text-[10px] font-black text-amber-700 uppercase tracking-widest w-40 border-l border-amber-100">Tutoría Valores</th>
-                    <th className="p-8 text-[10px] font-black text-institutional uppercase tracking-widest text-center w-64 border-l border-gray-100 bg-cyan-50/30">Estado Apreciación</th>
+                    {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
+                      <th className="p-8 text-[10px] font-black text-institutional uppercase tracking-widest text-center w-64 border-l border-gray-100 bg-cyan-50/30">Estado Apreciación</th>
+                    )}
                   </>
                 )}
               </tr>
@@ -286,7 +288,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                     <td className="p-6 text-base font-bold text-gray-700 sticky left-0 bg-white group-hover/row:bg-gray-50/90 z-20 shadow-[4px_0_15px_-5px_rgba(0,0,0,0.05)]">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 overflow-hidden">
-                          <div className={`w-3 h-3 rounded-full shrink-0 ${appreciation.comment.trim() !== '' ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-gray-200'}`}></div>
+                          {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
+                            <div className={`w-3 h-3 rounded-full shrink-0 ${appreciation.comment.trim() !== '' ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-gray-200'}`}></div>
+                          )}
                           <span className="truncate">{student.fullName}</span>
                         </div>
                         {(role === 'Supervisor' || role === 'Administrador') && (
@@ -373,39 +377,41 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                             <option value="C">C</option>
                           </select>
                         </td>
-                        <td className="p-3 text-center border-l border-gray-100 bg-gray-50/30">
-                          <div className="flex items-center justify-center gap-6">
-                            <button
-                              onClick={() => setActiveCommentStudent(student)}
-                              className={`p-3 px-5 rounded-2xl transition-all border-2 flex flex-col items-center ${appreciation.comment.trim() !== ''
+                        {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
+                          <td className="p-3 text-center border-l border-gray-100 bg-gray-50/30">
+                            <div className="flex items-center justify-center gap-6">
+                              <button
+                                onClick={() => setActiveCommentStudent(student)}
+                                className={`p-3 px-5 rounded-2xl transition-all border-2 flex flex-col items-center ${appreciation.comment.trim() !== ''
                                   ? 'bg-institutional/10 border-institutional text-institutional hover:bg-institutional hover:text-white shadow-lg shadow-institutional/20'
                                   : 'bg-white border-gray-200 text-gray-300 hover:border-institutional hover:text-institutional'
-                                }`}
-                            >
-                              <MessageSquare size={22} />
-                              <span className="text-[9px] font-black uppercase mt-1">Redactar</span>
-                            </button>
+                                  }`}
+                              >
+                                <MessageSquare size={22} />
+                                <span className="text-[9px] font-black uppercase mt-1">Redactar</span>
+                              </button>
 
-                            {appreciation.comment.trim() !== '' && (
-                              <div className="flex flex-col items-center gap-1.5">
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
-                                  }`}>
-                                  <Check size={18} strokeWidth={4} />
-                                  <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                              {appreciation.comment.trim() !== '' && (role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
+                                <div className="flex flex-col items-center gap-1.5">
+                                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                    }`}>
+                                    <Check size={18} strokeWidth={4} />
+                                    <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                                  </div>
+                                  {(role === 'Supervisor' || role === 'Administrador') && !bimestre.isLocked && (
+                                    <button
+                                      onClick={() => onApproveAppreciation(student.id)}
+                                      className={`p-2 rounded-lg text-[9px] font-black uppercase border-2 transition-all ${appreciation.isApproved ? 'bg-rose-50 text-rose-500 border-rose-200' : 'bg-green-600 text-white border-green-700 shadow-md active:scale-95'
+                                        }`}
+                                    >
+                                      {appreciation.isApproved ? 'Quitar Visto' : 'Dar Visto Bueno'}
+                                    </button>
+                                  )}
                                 </div>
-                                {(role === 'Supervisor' || role === 'Administrador') && !bimestre.isLocked && (
-                                  <button
-                                    onClick={() => onApproveAppreciation(student.id)}
-                                    className={`p-2 rounded-lg text-[9px] font-black uppercase border-2 transition-all ${appreciation.isApproved ? 'bg-rose-50 text-rose-500 border-rose-200' : 'bg-green-600 text-white border-green-700 shadow-md active:scale-95'
-                                      }`}
-                                  >
-                                    {appreciation.isApproved ? 'Quitar Visto' : 'Dar Visto Bueno'}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </td>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </>
                     )}
                   </tr>
@@ -419,14 +425,18 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
       {/* Leyenda y Ayuda */}
       <div className="p-6 bg-white rounded-3xl md:rounded-none md:rounded-b-[2.5rem] border border-gray-100 shadow-sm flex flex-wrap items-center justify-between gap-6">
         <div className="flex flex-wrap items-center gap-4 md:gap-8">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-slate-400"></div>
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pendiente</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Aprobado</span>
-          </div>
+          {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-slate-400"></div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pendiente</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Aprobado</span>
+              </div>
+            </>
+          )}
         </div>
         {!isTutorMode && !isFamilyMode && (
           <div className="flex items-center gap-2 text-gray-400">
@@ -447,7 +457,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
             onUpdateAppreciation(activeCommentStudent.id, val);
             setActiveCommentStudent(null);
           }}
-          isLocked={bimestre.isLocked || (role === 'Docente' && (getAppreciation(activeCommentStudent.id).isApproved))}
+          isLocked={bimestre.isLocked}
         />
       )}
     </div>

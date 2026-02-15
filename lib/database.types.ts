@@ -601,6 +601,67 @@ export type Database = {
                     updated_at?: string | null
                 }
             }
+            student_appreciations: {
+                Row: {
+                    id: string
+                    student_id: string
+                    bimestre_id: number
+                    tutor_id: string | null
+                    comment: string | null
+                    is_approved: boolean | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    student_id: string
+                    bimestre_id: number
+                    tutor_id?: string | null
+                    comment?: string | null
+                    is_approved?: boolean | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    student_id?: string
+                    bimestre_id?: number
+                    tutor_id?: string | null
+                    comment?: string | null
+                    is_approved?: boolean | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            student_behavior_grades: {
+                Row: {
+                    id: string
+                    student_id: string
+                    bimestre_id: number
+                    behavior_grade: string | null
+                    values_grade: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    student_id: string
+                    bimestre_id: number
+                    behavior_grade?: string | null
+                    values_grade?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    student_id?: string
+                    bimestre_id?: number
+                    behavior_grade?: string | null
+                    values_grade?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
             student_parents: {
                 Row: {
                     id: string
@@ -673,10 +734,8 @@ export type Database = {
             }
         }
         Views: {
-            [_ in never]: never
         }
         Functions: {
-            [_ in never]: never
         }
         Enums: {
             academic_status: 'activo' | 'trasladado' | 'retirado' | 'reserva' | 'matriculado' | 'sin_matricula'

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, UserCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
 import { UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 

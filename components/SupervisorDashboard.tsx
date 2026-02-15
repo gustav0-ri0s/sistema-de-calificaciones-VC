@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserRole, Student, AcademicLoad, GradeEntry, AppreciationEntry, TutorValues, Bimestre, GradeLevel, FamilyCommitment, FamilyEvaluation } from '../types';
-import { ShieldCheck, Users, FileText, AlertCircle, CheckCircle, Search, LayoutGrid, ChevronRight, ArrowLeft, Info, X, Lock, GraduationCap, Heart, Star, Loader2 } from 'lucide-react';
-import { generateGlobalReportCard } from '../utils/pdfGenerator';
+import { ShieldCheck, Users, FileText, CheckCircle2, Search, LayoutGrid, ChevronRight, ArrowLeft, Info, X, Lock, Loader2, MessageSquare, Check } from 'lucide-react';
+import DescriptiveCommentModal from './DescriptiveCommentModal';
 import { supabase } from '../lib/supabase';
 
 interface SupervisorDashboardProps {
@@ -16,6 +16,7 @@ interface SupervisorDashboardProps {
   familyCommitments: FamilyCommitment[];
   familyEvaluations: FamilyEvaluation[];
   onApproveAppreciation: (sId: string) => void;
+  onUpdateAppreciation: (sId: string, comment: string) => void;
 }
 
 interface SectionStats {
@@ -25,6 +26,7 @@ interface SectionStats {
   studentCount: number;
   totalCourses: number;
   progress: number;
+  pendingAppreciations: number;
 }
 
 const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
@@ -34,12 +36,19 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   onBimestreChange,
   grades,
   appreciations,
-  onApproveAppreciation
+  onApproveAppreciation,
+  onUpdateAppreciation
 }) => {
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
   const [selectedSectionName, setSelectedSectionName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [auditingStudent, setAuditingStudent] = useState<Student | null>(null);
+  const [activeCommentStudent, setActiveCommentStudent] = useState<Student | null>(null);
+
+  // Force reset on mount to prevent "direct redirection" ghost state
+  useEffect(() => {
+    setSelectedSectionId(null);
+  }, []);
 
   // Real Data State
   const [sectionsData, setSectionsData] = useState<SectionStats[]>([]);
@@ -47,6 +56,28 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [sectionStudents, setSectionStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [sectionCourses, setSectionCourses] = useState<AcademicLoad[]>([]); // To audit specific courses
+
+  // Filter State
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed' | 'incomplete'>('all');
+
+  // Computed Filtered & Sorted Sections
+  const filteredSections = sectionsData
+    .filter(section => {
+      if (filterStatus === 'pending') return section.pendingAppreciations > 0;
+      if (filterStatus === 'completed') return section.progress === 100;
+      if (filterStatus === 'incomplete') return section.progress < 100;
+      return true;
+    })
+    .sort((a, b) => {
+      // 1. Priority: Pending Appreciations (Descending)
+      if (a.pendingAppreciations > 0 && b.pendingAppreciations === 0) return -1;
+      if (a.pendingAppreciations === 0 && b.pendingAppreciations > 0) return 1;
+      if (a.pendingAppreciations > 0 && b.pendingAppreciations > 0) return b.pendingAppreciations - a.pendingAppreciations;
+
+      // 2. Secondary: Progress (Ascending for incomplete, Descending for completed?)
+      // Let's just keep it stable by ID or Name
+      return a.id - b.id;
+    });
 
   // Fetch Global Stats (All Classrooms)
   useEffect(() => {
@@ -81,9 +112,47 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               .select('*', { count: 'exact', head: true })
               .eq('classroom_id', c.id);
 
-            // Calculate mocked progress for now (since we don't have a grades table yet)
-            // In future: Query 'grades' table count vs expected count
-            const mockProgress = 0; // Default to 0 until grades are in DB
+            // Calculate REAL progress
+            const studentsInClass = (await supabase.from('students').select('id').eq('classroom_id', c.id)).data?.map(s => s.id) || [];
+
+            let realProgress = 0;
+            if (studentsInClass.length > 0) {
+              // 1. Get total expected slots (Students * Competencies)
+              const { data: classCourses } = await supabase
+                .from('course_assignments')
+                .select('curricular_areas(id, competencies(id))')
+                .eq('classroom_id', c.id);
+
+              let totalCompetenciesInClass = 0;
+              classCourses?.forEach((cc: any) => {
+                totalCompetenciesInClass += cc.curricular_areas?.competencies?.length || 0;
+              });
+
+              const totalSlots = studentsInClass.length * totalCompetenciesInClass;
+
+              // 2. Get filled grades count
+              const { count: gradeCount } = await supabase
+                .from('student_grades')
+                .select('*', { count: 'exact', head: true })
+                .in('student_id', studentsInClass)
+                .eq('bimestre_id', bimestre.id);
+
+              if (totalSlots > 0 && gradeCount !== null) {
+                realProgress = Math.round((gradeCount / totalSlots) * 100);
+              }
+            }
+
+            // Count pending appreciations
+            let pendingCount = 0;
+            if (studentsInClass.length > 0) {
+              const { count } = await supabase
+                .from('student_appreciations')
+                .select('*', { count: 'exact', head: true })
+                .eq('bimestre_id', bimestre.id)
+                .eq('is_approved', false)
+                .in('student_id', studentsInClass);
+              pendingCount = count || 0;
+            }
 
             return {
               id: c.id,
@@ -91,7 +160,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               level: c.level,
               studentCount: studentCount || 0,
               totalCourses: courseCount || 0,
-              progress: mockProgress
+              progress: realProgress,
+              pendingAppreciations: pendingCount
             };
           });
 
@@ -106,7 +176,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     };
 
     fetchGlobalStats();
-  }, []);
+  }, [bimestre.id]);
 
   // Fetch Students when a section is selected
   useEffect(() => {
@@ -143,11 +213,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
         if (cError) throw cError;
 
-        const mappedCourses: any[] = (courses || []).map((c: any) => ({
+        const mappedCourses: AcademicLoad[] = (courses || []).map((c: any) => ({
           id: c.id.toString(),
           courseName: c.curricular_areas?.name,
           teacherName: c.profiles?.full_name || 'Sin Asignar',
-          competencies: c.curricular_areas?.competencies || []
+          competencies: c.curricular_areas?.competencies || [],
+          // Required fields for AcademicLoad
+          gradeSection: selectedSectionName || '',
+          isTutor: false,
+          classroomId: selectedSectionId || 0,
+          areaId: 0
         }));
         setSectionCourses(mappedCourses);
 
@@ -167,7 +242,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     return sectionCourses.map(course => {
       // Still using local state 'grades' for now, as DB grades table logic isn't built yet
       const comps = (course.competencies || []).map((c: any) => {
-        const gradeEntry = grades.find((g: any) => g.studentId === studentId && g.competencyId === c.id.toString());
+        const gradeEntry = grades.find((g) => g.studentId === studentId && g.competencyId === c.id.toString());
         return {
           name: c.name,
           isFilled: !!gradeEntry,
@@ -230,10 +305,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     }
                   }}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${bimestre.id === b.id
-                      ? 'bg-institutional text-white shadow-md'
-                      : b.isLocked
-                        ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
-                        : 'text-gray-400 hover:bg-gray-200 cursor-pointer'
+                    ? 'bg-institutional text-white shadow-md'
+                    : b.isLocked
+                      ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
+                      : 'text-gray-400 hover:bg-gray-200 cursor-pointer'
                     }`}
                 >
                   {b.label} {b.isLocked && <Lock size={10} />}
@@ -259,37 +334,79 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         </div>
       ) : !selectedSectionId ? (
         /* VISTA DE SALONES (SECCIONES) REA */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {sectionsData.length === 0 ? (
-            <div className="col-span-full text-center p-10 text-gray-400">No se encontraron salones activos.</div>
-          ) : (
-            sectionsData.map((section) => (
-              <div
-                key={section.id}
-                onClick={() => { setSelectedSectionId(section.id); setSelectedSectionName(section.name); }}
-                className="group bg-white rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl border border-gray-100 transition-all cursor-pointer hover:-translate-y-2"
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'pending', label: 'Pendientes Revisión' },
+              { id: 'completed', label: '100% Completado' },
+              { id: 'incomplete', label: 'Falta Completar' }
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilterStatus(f.id as any)}
+                className={`px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all border ${filterStatus === f.id
+                  ? 'bg-institutional text-white border-institutional shadow-lg shadow-institutional/20 ring-2 ring-institutional/20'
+                  : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="p-4 bg-institutional/10 text-institutional rounded-2xl group-hover:bg-institutional group-hover:text-white transition-all">
-                    <LayoutGrid size={28} />
-                  </div>
-                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500`}>
-                    {section.level}
-                  </div>
-                </div>
+                {f.label}
+              </button>
+            ))}
+          </div>
 
-                <h3 className="text-2xl font-black text-gray-800 mb-2">{section.name}</h3>
-                <div className="space-y-2 mb-8">
-                  <p className="text-gray-400 font-bold flex items-center gap-2 text-xs"><Users size={14} /> {section.studentCount} Estudiantes</p>
-                  <p className="text-gray-400 font-bold flex items-center gap-2 text-xs"><FileText size={14} /> {section.totalCourses} Cursos Asignados</p>
-                </div>
-
-                <div className="flex items-center justify-between text-institutional font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-                  Auditar Sección <ChevronRight size={16} />
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredSections.length === 0 ? (
+              <div className="col-span-full text-center p-10 bg-gray-50 rounded-[2.5rem] text-gray-400 font-medium">
+                No se encontraron salones con este filtro.
               </div>
-            ))
-          )}
+            ) : (
+              filteredSections.map((section) => (
+                <div
+                  key={section.id}
+                  onClick={() => { setSelectedSectionId(section.id); setSelectedSectionName(section.name); }}
+                  className={`group relative bg-white rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl transition-all cursor-pointer hover:-translate-y-2 overflow-hidden ${section.pendingAppreciations > 0 ? 'border-2 border-red-500 shadow-red-200' : 'border border-gray-100'}`}
+                >
+                  {section.pendingAppreciations > 0 && (
+                    <div className="absolute top-0 right-0 left-0 bg-red-500 py-2 flex items-center justify-center gap-2 text-white shadow-md z-10">
+                      <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse shadow-md"></div>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Pendiente de Revisión ({section.pendingAppreciations})</span>
+                    </div>
+                  )}
+
+                  <div className={`flex justify-between items-start mb-6 ${section.pendingAppreciations > 0 ? 'mt-6' : ''}`}>
+                    <div className="p-4 bg-institutional/10 text-institutional rounded-2xl group-hover:bg-institutional group-hover:text-white transition-all">
+                      <LayoutGrid size={28} />
+                    </div>
+                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500`}>
+                      {section.level}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-2xl font-black text-gray-800">{section.name}</h3>
+                  </div>
+
+                  <div className="w-full bg-gray-100 rounded-full h-2 mb-4 overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-1000 ${section.progress === 100 ? 'bg-green-500' : 'bg-institutional'}`} style={{ width: `${section.progress}%` }}></div>
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-gray-400 mb-6 uppercase tracking-widest">
+                    <span>Progreso</span>
+                    <span>{section.progress}%</span>
+                  </div>
+                  <div className="space-y-2 mb-8">
+                    <p className="text-gray-400 font-bold flex items-center gap-2 text-xs"><Users size={14} /> {section.studentCount} Estudiantes</p>
+                    <p className="text-gray-400 font-bold flex items-center gap-2 text-xs"><FileText size={14} /> {section.totalCourses} Cursos Asignados</p>
+                  </div>
+
+                  <div className="flex items-center justify-between text-institutional font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+                    Auditar Sección <ChevronRight size={16} />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       ) : (
         /* VISTA DETALLE DE ESTUDIANTES POR SECCIÓN */
@@ -320,20 +437,79 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudiante</th>
-                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado (Simulado)</th>
-                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Auditoría</th>
+                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado Auditoría</th>
+                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Apreciación Tutor</th>
+                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Detalle Académico</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {sectionStudents.filter(s => s.fullName.toLowerCase().includes(searchTerm.toLowerCase())).map(student => {
                     const status = getStatusForStudent(student.id);
+                    const appreciation = appreciations.find(a => a.studentId === student.id) || { studentId: student.id, comment: '', isApproved: false };
+
                     return (
                       <tr key={student.id} className="hover:bg-gray-50/30 transition-colors group">
                         <td className="p-6">
                           <span className="font-bold text-gray-700 text-base">{student.fullName}</span>
                         </td>
                         <td className="p-6">
-                          <span className="text-xs text-gray-400 italic">Datos de prueba</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500 font-bold">{status.progress}% Completado</span>
+                            <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-institutional rounded-full transition-all" style={{ width: `${status.progress}%` }}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-6">
+                          <div className="flex items-center justify-center gap-6">
+                            <button
+                              onClick={() => setActiveCommentStudent(student)}
+                              className={`p-3 px-5 rounded-2xl transition-all border-2 flex flex-col items-center ${appreciation.comment.trim() !== ''
+                                ? 'bg-institutional/10 border-institutional text-institutional hover:bg-institutional hover:text-white shadow-lg shadow-institutional/20'
+                                : 'bg-white border-gray-200 text-gray-300 hover:border-institutional hover:text-institutional'
+                                }`}
+                            >
+                              <MessageSquare size={18} />
+                              <span className="text-[9px] font-black uppercase mt-1">
+                                {appreciation.comment.trim() !== '' ? 'Editar' : 'Redactar'}
+                              </span>
+                            </button>
+
+                            {appreciation.comment.trim() !== '' && (
+                              <div className="flex flex-col items-center gap-1.5">
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                  }`}>
+                                  {appreciation.isApproved ? <CheckCircle2 size={16} /> : <Check size={16} />}
+                                  <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                                </div>
+                                {!bimestre.isLocked && (
+                                  <button
+                                    onClick={() => {
+                                      // Call parent handler
+                                      onApproveAppreciation(student.id);
+
+                                      // Optimistically update local stats
+                                      setSectionsData(prev => prev.map(section => {
+                                        if (section.id === selectedSectionId) {
+                                          return {
+                                            ...section,
+                                            pendingAppreciations: appreciation.isApproved
+                                              ? section.pendingAppreciations + 1 // Currently approved -> unapproving -> add to pending
+                                              : Math.max(0, section.pendingAppreciations - 1) // Currently pending -> approving -> remove from pending
+                                          };
+                                        }
+                                        return section;
+                                      }));
+                                    }}
+                                    className={`p-2 rounded-lg text-[9px] font-black uppercase border-2 transition-all ${appreciation.isApproved ? 'bg-rose-50 text-rose-500 border-rose-200' : 'bg-green-600 text-white border-green-700 shadow-md active:scale-95'
+                                      }`}
+                                  >
+                                    {appreciation.isApproved ? 'Quitar Visto' : 'Dar Visto Bueno'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="p-6 flex items-center justify-center gap-3">
                           <button
@@ -359,6 +535,22 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         </div>
       )}
 
+      {/* MODAL DE APRECIACIÓN */}
+      {activeCommentStudent && (
+        <DescriptiveCommentModal
+          role={role}
+          student={activeCommentStudent}
+          currentComment={appreciations.find(a => a.studentId === activeCommentStudent.id)?.comment || ''}
+          isApproved={appreciations.find(a => a.studentId === activeCommentStudent.id)?.isApproved || false}
+          onClose={() => setActiveCommentStudent(null)}
+          onSave={(val) => {
+            onUpdateAppreciation(activeCommentStudent.id, val);
+            setActiveCommentStudent(null);
+          }}
+          isLocked={bimestre.isLocked}
+        />
+      )}
+
       {/* MODAL DE AUDITORÍA DETALLADA */}
       {auditingStudent && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10">
@@ -378,20 +570,32 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
-              {/* Simplified Audit View */}
               {(getStudentAudit(auditingStudent.id) || []).length === 0 ? (
                 <div className="text-center text-gray-400">No hay cursos asignados para auditar.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {getStudentAudit(auditingStudent.id).map((courseAudit, idx) => (
+                  {(getStudentAudit(auditingStudent.id) || []).map((courseAudit, idx) => (
                     <div key={idx} className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
                       <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">{courseAudit.courseName}</h4>
                       <span className="text-[10px] text-gray-400 block mb-4">{courseAudit.teacherName}</span>
                       <div className="space-y-1">
                         {(courseAudit.comps || []).map((c: any, i: number) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${c.isFilled ? 'bg-green-500' : 'bg-red-400'}`}></div>
-                            <span className="text-[10px] text-gray-600">{c.name}</span>
+                          <div key={i} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                            <span className="text-[10px] text-gray-600 font-bold">{c.name}</span>
+                            {c.isFilled ? (
+                              <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                  c.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                    c.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                      'bg-red-50 text-red-700 border-red-100'
+                                }`}>
+                                {c.grade}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
+                                <span className="text-[9px] font-black text-red-300 uppercase">Sin Nota</span>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
