@@ -202,6 +202,30 @@ const App: React.FC = () => {
             name: c.name
           })) || []
         }));
+
+        // If the teacher is a tutor but has no course_assignment in their tutor classroom,
+        // inject a virtual entry so the tutoring module still appears
+        if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === tutorClassroomId)) {
+          const { data: tutorClassroom } = await supabase
+            .from('classrooms')
+            .select('id, grade, section, level')
+            .eq('id', tutorClassroomId)
+            .single();
+
+          if (tutorClassroom) {
+            mappedLoad.push({
+              id: `tutor-virtual-${tutorClassroom.id}`,
+              courseName: 'Tutoría',
+              gradeSection: `${tutorClassroom.grade} ${tutorClassroom.section}`,
+              isTutor: true,
+              teacherName: '',
+              classroomId: tutorClassroom.id,
+              areaId: 0,
+              competencies: []
+            });
+          }
+        }
+
         setAcademicLoad(mappedLoad);
       }
     } catch (err) {
