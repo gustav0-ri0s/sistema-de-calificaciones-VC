@@ -68,6 +68,7 @@ const App: React.FC = () => {
       } else {
         setUserId(null);
         setCurrentUserRole(null);
+        setUserFullName('');
         setAcademicLoad([]);
         setBimestres([]);
       }
@@ -75,6 +76,8 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const [userFullName, setUserFullName] = useState<string>('');
 
   // Fetch Appreciations and Tutor Data when Bimestre Changes
   useEffect(() => {
@@ -151,6 +154,7 @@ const App: React.FC = () => {
       }
 
       if (profile) {
+        setUserFullName(profile.full_name || '');
         let appRole: UserRole = 'Docente';
         if (profile.role === 'admin' || profile.role === 'subdirector') appRole = 'Administrador';
         else if (profile.role === 'supervisor') appRole = 'Supervisor';
@@ -547,12 +551,40 @@ const App: React.FC = () => {
     }
   };
 
+  const userName = useMemo(() => {
+    const toTitleCase = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
+    if (!userFullName) return userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1);
+
+    // Handle format "Lastnames, Names" (common in some exports)
+    if (userFullName.includes(',')) {
+      const [lastNames, firstNames] = userFullName.split(',').map(s => s.trim());
+      const firstName = firstNames.split(/\s+/)[0];
+      const firstLastName = lastNames.split(/\s+/)[0];
+      return `${toTitleCase(firstName)} ${toTitleCase(firstLastName)}`;
+    }
+
+    // Assume standard "Names Lastnames"
+    const parts = userFullName.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      // In Spanish culture, if there are 3 parts, it's usually First Last1 Last2
+      // If there are 4 parts, it's usually First Middle Last1 Last2
+      // Take first name and first last name (index 0 and index 1 or 2)
+      const firstName = toTitleCase(parts[0]);
+      const firstLastName = toTitleCase(parts.length >= 4 ? parts[2] : parts[1]);
+      return `${firstName} ${firstLastName}`;
+    }
+    if (parts.length === 2) {
+      return `${toTitleCase(parts[0])} ${toTitleCase(parts[1])}`;
+    }
+    return toTitleCase(userFullName);
+  }, [userFullName, userEmail]);
+
   if (!currentUserRole) {
     return <Login onLogin={handleLogin} />;
   }
 
   const isStaff = currentUserRole === 'Supervisor' || currentUserRole === 'Administrador';
-  const userName = userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col text-sm md:text-base">
