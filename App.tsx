@@ -1,20 +1,26 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, Home, Heart, Loader2 } from 'lucide-react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, UserRole, FamilyCommitment, FamilyEvaluation, Student } from './types';
 import CourseCard from './components/CourseCard';
 import GradingMatrix from './components/GradingMatrix';
-import Login from './components/Login';
 import SupervisorDashboard from './components/SupervisorDashboard';
 import { supabase } from './lib/supabase';
+import AuthCallback from './components/AuthCallback';
+import RequireAuth from './components/RequireAuth';
+import Sidebar from './components/Sidebar';
+
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
+const ALLOWED_ROLES = ['DOCENTE', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(null);
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<AcademicLoad | null>(null);
-  const [isTutorMode, setIsTutorMode] = useState(false);
-  const [isFamilyMode, setIsFamilyMode] = useState(false);
 
   // Bimestres State
   const [bimestres, setBimestres] = useState<Bimestre[]>([]);
@@ -31,7 +37,6 @@ const App: React.FC = () => {
   const [appreciations, setAppreciations] = useState<AppreciationEntry[]>([]);
   const [tutorData, setTutorData] = useState<TutorValues[]>([]);
 
-  // Los compromisos ahora son fijos y vienen del "sistema académico"
   const [familyCommitments] = useState<FamilyCommitment[]>([
     { id: 'fc1', text: 'Acompaña en el aprendizaje diario' },
     { id: 'fc2', text: 'Cumple estrictamente con el uniforme institucional' },
@@ -375,38 +380,28 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    // Auth listener will handle state reset
+    window.location.href = PORTAL_URL;
   };
 
   const handleCourseSelect = async (course: AcademicLoad) => {
     setSelectedCourse(course);
-    setIsTutorMode(false);
-    setIsFamilyMode(false);
-    await fetchStudents(course.classroomId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate(`/curso/${course.id}`);
   };
 
   const handleTutorSelect = async (section: AcademicLoad) => {
     setSelectedCourse(section);
-    setIsTutorMode(true);
-    setIsFamilyMode(false);
-    await fetchStudents(section.classroomId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate(`/tutoria/${section.classroomId}`);
   };
 
   const handleFamilySelect = async (section: AcademicLoad) => {
     setSelectedCourse(section);
-    setIsTutorMode(false);
-    setIsFamilyMode(true);
-    await fetchStudents(section.classroomId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navigate(`/familia/${section.classroomId}`);
   };
 
   const handleBackToDashboard = () => {
     setSelectedCourse(null);
-    setIsTutorMode(false);
-    setIsFamilyMode(false);
     setStudents([]);
+    navigate('/');
   };
 
   const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel) => {
@@ -579,186 +574,429 @@ const App: React.FC = () => {
     }
     return toTitleCase(userFullName);
   }, [userFullName, userEmail]);
-
-  if (!currentUserRole) {
-    return <Login onLogin={handleLogin} />;
-  }
-
   const isStaff = currentUserRole === 'Supervisor' || currentUserRole === 'Administrador';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col text-sm md:text-base">
-      <header className="bg-white border-b sticky top-0 z-[100] shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 md:w-11 md:h-11 bg-institutional rounded-xl flex items-center justify-center text-white shadow-lg shadow-institutional/20">
-              <ClipboardCheck size={24} />
-            </div>
-            <div>
-              <h1 className="font-bold text-sm md:text-lg text-gray-800 leading-none mb-1">IEP Valores y Ciencias</h1>
-              <p className="text-[9px] md:text-[10px] text-gray-400 font-bold tracking-wider uppercase">Panel {isStaff ? 'Institucional' : 'Docente'}</p>
-            </div>
-          </div>
+    <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route
+        path="*"
+        element={
+          <RequireAuth allowedRoles={ALLOWED_ROLES}>
+            <div className="min-h-screen bg-gray-50 flex flex-col text-sm md:text-base">
+              <header className="bg-white border-b sticky top-0 z-[100] shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 md:w-11 md:h-11 bg-institutional rounded-xl flex items-center justify-center text-white shadow-lg shadow-institutional/20">
+                      <ClipboardCheck size={24} />
+                    </div>
+                    <div>
+                      <h1 className="font-bold text-sm md:text-lg text-gray-800 leading-none mb-1">IEP Valores y Ciencias</h1>
+                      <p className="text-[9px] md:text-[10px] text-gray-400 font-bold tracking-wider uppercase">Panel {isStaff ? 'Institucional' : 'Docente'}</p>
+                    </div>
+                  </div>
 
-          <div className="flex items-center gap-6">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Usuario Activo</span>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-black text-gray-900 leading-none">Bienvenido, {userName}</p>
-                  <p className="text-[9px] font-black uppercase text-institutional tracking-widest mt-1">{currentUserRole}</p>
+                  <div className="flex items-center gap-6">
+                    <div className="hidden sm:flex flex-col items-end">
+                      <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Usuario Activo</span>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-black text-gray-900 leading-none">Bienvenido, {userName}</p>
+                          <p className="text-[9px] font-black uppercase text-institutional tracking-widest mt-1">{currentUserRole}</p>
+                        </div>
+                        <div className="w-9 h-9 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                          <UserCircle size={22} />
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={handleLogout} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all active:scale-90 border border-transparent hover:border-red-100">
+                      <LogOut size={20} />
+                    </button>
+                  </div>
                 </div>
-                <div className="w-9 h-9 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                  <UserCircle size={22} />
-                </div>
+              </header>
+
+              <div className="flex-1 flex max-w-[1600px] mx-auto w-full relative">
+                <Sidebar role={currentUserRole} onLogout={handleLogout} />
+
+                <main className="flex-1 px-4 py-8 overflow-y-auto">
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={
+                        isStaff ? (
+                          selectedBimestre && (
+                            <SupervisorDashboard
+                              role={currentUserRole}
+                              bimestre={selectedBimestre}
+                              allBimestres={bimestres}
+                              onBimestreChange={(b) => setSelectedBimestre(b)}
+                              grades={grades}
+                              appreciations={appreciations}
+                              tutorData={tutorData}
+                              onApproveAppreciation={approveAppreciation}
+                              onUpdateAppreciation={updateAppreciation}
+                              familyCommitments={familyCommitments}
+                              familyEvaluations={familyEvaluations}
+                            />
+                          )
+                        ) : (
+                          <div>
+                            <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                              <div>
+                                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2 tracking-tight">Carga Académica</h2>
+                                <p className="text-sm md:text-base text-gray-500 font-medium">Gestión de cursos y competencias asignadas para el {selectedBimestre?.label}.</p>
+                              </div>
+                              <div className="flex items-center gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm overflow-x-auto no-scrollbar">
+                                {loadingBimestres ? (
+                                  <div className="px-4 py-2"><Loader2 size={20} className="animate-spin text-institutional" /></div>
+                                ) : (
+                                  bimestres.map((b) => (
+                                    <button
+                                      key={b.id}
+                                      onClick={() => {
+                                        if (!b.isLocked) setSelectedBimestre(b);
+                                      }}
+                                      className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
+                                        ? 'bg-institutional text-white shadow-md'
+                                        : b.isLocked
+                                          ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
+                                          : 'text-gray-400 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                      {b.label} {b.isLocked && <Lock size={12} />}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+
+                            {loadingCourses ? (
+                              <div className="flex items-center justify-center h-64">
+                                <Loader2 className="animate-spin text-institutional" size={48} />
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {tutorSections.map((section) => (
+                                  <React.Fragment key={`tutor-frag-${section.id}`}>
+                                    <div onClick={() => handleTutorSelect(section)} className="group relative bg-white border-2 border-amber-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-amber-50/50">
+                                      <div className="flex justify-between items-start mb-6">
+                                        <div className="p-4 bg-amber-100 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-all shadow-inner">
+                                          <Star size={28} fill="currentColor" />
+                                        </div>
+                                        <span className="px-3 py-1 bg-amber-600 text-white text-[10px] font-black uppercase rounded-lg">Tutoría</span>
+                                      </div>
+                                      <h3 className="text-2xl font-black text-gray-800 mb-2">Módulo de Tutoría</h3>
+                                      <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><BookOpen size={16} /> {section.gradeSection}</p>
+                                      <div className="pt-5 border-t border-amber-50 flex items-center justify-between text-amber-600 font-black text-sm uppercase tracking-widest">Conducta →</div>
+                                    </div>
+
+                                    <div onClick={() => handleFamilySelect(section)} className="group relative bg-white border-2 border-slate-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-slate-50/50">
+                                      <div className="flex justify-between items-start mb-6">
+                                        <div className="p-4 bg-slate-100 text-slate-600 rounded-2xl group-hover:bg-slate-800 group-hover:text-white transition-all shadow-inner">
+                                          <Heart size={28} />
+                                        </div>
+                                        <span className="px-3 py-1 bg-slate-600 text-white text-[10px] font-black uppercase rounded-lg">Padres</span>
+                                      </div>
+                                      <h3 className="text-2xl font-black text-gray-800 mb-2">Compromisos de la Familia</h3>
+                                      <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><Home size={16} /> {section.gradeSection}</p>
+                                      <div className="pt-5 border-t border-slate-50 flex items-center justify-between text-slate-600 font-black text-sm uppercase tracking-widest">Calificar Padres →</div>
+                                    </div>
+                                  </React.Fragment>
+                                ))}
+
+                                {academicLoad.map((course) => (
+                                  <CourseCard key={course.id} course={course} onSelect={handleCourseSelect} isBimestreLocked={selectedBimestre?.isLocked || false} />
+                                ))}
+
+                                {academicLoad.length === 0 && !loadingCourses && (
+                                  <div className="col-span-full p-10 text-center text-gray-400 font-bold bg-white rounded-3xl border border-dashed border-gray-300">
+                                    No tienes cursos asignados en este momento.
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
+                    />
+
+                    <Route
+                      path="/curso/:id"
+                      element={
+                        <CourseRouteWrapper
+                          selectedCourse={selectedCourse}
+                          academicLoad={academicLoad}
+                          fetchStudents={fetchStudents}
+                          loadingStudents={loadingStudents}
+                          selectedBimestre={selectedBimestre}
+                          currentUserRole={currentUserRole}
+                          students={students}
+                          grades={grades}
+                          appreciations={appreciations}
+                          tutorData={tutorData}
+                          familyCommitments={familyCommitments}
+                          familyEvaluations={familyEvaluations}
+                          updateGrade={updateGrade}
+                          updateAppreciation={updateAppreciation}
+                          approveAppreciation={approveAppreciation}
+                          updateTutorData={updateTutorData}
+                          updateFamilyEvaluation={updateFamilyEvaluation}
+                          handleBackToDashboard={handleBackToDashboard}
+                        />
+                      }
+                    />
+
+                    <Route
+                      path="/tutoria/:classroomId"
+                      element={
+                        <TutorRouteWrapper
+                          selectedCourse={selectedCourse}
+                          academicLoad={academicLoad}
+                          fetchStudents={fetchStudents}
+                          loadingStudents={loadingStudents}
+                          selectedBimestre={selectedBimestre}
+                          currentUserRole={currentUserRole}
+                          students={students}
+                          grades={grades}
+                          appreciations={appreciations}
+                          tutorData={tutorData}
+                          familyCommitments={familyCommitments}
+                          familyEvaluations={familyEvaluations}
+                          updateGrade={updateGrade}
+                          updateAppreciation={updateAppreciation}
+                          approveAppreciation={approveAppreciation}
+                          updateTutorData={updateTutorData}
+                          updateFamilyEvaluation={updateFamilyEvaluation}
+                          handleBackToDashboard={handleBackToDashboard}
+                        />
+                      }
+                    />
+
+                    <Route
+                      path="/familia/:classroomId"
+                      element={
+                        <FamilyRouteWrapper
+                          selectedCourse={selectedCourse}
+                          academicLoad={academicLoad}
+                          fetchStudents={fetchStudents}
+                          loadingStudents={loadingStudents}
+                          selectedBimestre={selectedBimestre}
+                          currentUserRole={currentUserRole}
+                          students={students}
+                          grades={grades}
+                          appreciations={appreciations}
+                          tutorData={tutorData}
+                          familyCommitments={familyCommitments}
+                          familyEvaluations={familyEvaluations}
+                          updateGrade={updateGrade}
+                          updateAppreciation={updateAppreciation}
+                          approveAppreciation={approveAppreciation}
+                          updateTutorData={updateTutorData}
+                          updateFamilyEvaluation={updateFamilyEvaluation}
+                          handleBackToDashboard={handleBackToDashboard}
+                        />
+                      }
+                    />
+
+                    {/* Redirección por defecto si la ruta no existe */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </main>
               </div>
             </div>
-            <button onClick={handleLogout} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all active:scale-90 border border-transparent hover:border-red-100">
-              <LogOut size={20} />
-            </button>
+          </RequireAuth>
+        }
+      />
+    </Routes>
+  );
+};
+
+// Helper components for Routes to avoid large inline code and handle initial student fetch
+const CourseRouteWrapper = ({
+  selectedCourse, academicLoad, fetchStudents, loadingStudents, selectedBimestre,
+  currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
+}: any) => {
+  const { id } = useParams<{ id: string }>();
+
+  const course = selectedCourse || academicLoad.find((c: any) => c.id === id);
+
+  useEffect(() => {
+    if (course) {
+      fetchStudents(course.classroomId);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [course]);
+
+  if (academicLoad.length > 0 && !course) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!course) return null;
+
+  return (
+    <div>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
+            <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
+              {course.courseName}
+            </h2>
+            <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
-        {!selectedCourse ? (
-          isStaff ? (
-            selectedBimestre && (
-              <SupervisorDashboard
-                role={currentUserRole}
-                bimestre={selectedBimestre}
-                allBimestres={bimestres}
-                onBimestreChange={(b) => setSelectedBimestre(b)}
-                grades={grades}
-                appreciations={appreciations}
-                tutorData={tutorData}
-                onApproveAppreciation={approveAppreciation}
-                onUpdateAppreciation={updateAppreciation}
-                familyCommitments={familyCommitments}
-                familyEvaluations={familyEvaluations}
-              />
-            )
-          ) : (
-            <div>
-              <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2 tracking-tight">Carga Académica</h2>
-                  <p className="text-sm md:text-base text-gray-500 font-medium">Gestión de cursos y competencias asignadas para el {selectedBimestre?.label}.</p>
-                </div>
-                <div className="flex items-center gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm overflow-x-auto no-scrollbar">
-                  {loadingBimestres ? (
-                    <div className="px-4 py-2"><Loader2 size={20} className="animate-spin text-institutional" /></div>
-                  ) : (
-                    bimestres.map((b) => (
-                      <button
-                        key={b.id}
-                        onClick={() => {
-                          if (!b.isLocked) setSelectedBimestre(b);
-                        }}
-                        className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
-                          ? 'bg-institutional text-white shadow-md'
-                          : b.isLocked
-                            ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
-                            : 'text-gray-400 hover:bg-gray-100'
-                          }`}
-                      >
-                        {b.label} {b.isLocked && <Lock size={12} />}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
+      {loadingStudents ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-institutional" size={48} />
+        </div>
+      ) : selectedBimestre ? (
+        <GradingMatrix
+          role={currentUserRole}
+          course={course}
+          students={students}
+          isTutorMode={false}
+          isFamilyMode={false}
+          bimestre={selectedBimestre}
+          grades={grades}
+          appreciations={appreciations}
+          tutorData={tutorData}
+          familyCommitments={familyCommitments}
+          familyEvaluations={familyEvaluations}
+          onUpdateGrade={updateGrade}
+          onUpdateAppreciation={updateAppreciation}
+          onApproveAppreciation={approveAppreciation}
+          onUpdateTutorData={updateTutorData}
+          onUpdateFamilyEvaluation={updateFamilyEvaluation}
+        />
+      ) : null}
+    </div>
+  );
+};
 
-              {loadingCourses ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="animate-spin text-institutional" size={48} />
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {tutorSections.map((section) => (
-                    <React.Fragment key={`tutor-frag-${section.id}`}>
-                      <div onClick={() => handleTutorSelect(section)} className="group relative bg-white border-2 border-amber-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-amber-50/50">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="p-4 bg-amber-100 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-all shadow-inner">
-                            <Star size={28} fill="currentColor" />
-                          </div>
-                          <span className="px-3 py-1 bg-amber-600 text-white text-[10px] font-black uppercase rounded-lg">Tutoría</span>
-                        </div>
-                        <h3 className="text-2xl font-black text-gray-800 mb-2">Módulo de Tutoría</h3>
-                        <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><BookOpen size={16} /> {section.gradeSection}</p>
-                        <div className="pt-5 border-t border-amber-50 flex items-center justify-between text-amber-600 font-black text-sm uppercase tracking-widest">Conducta →</div>
-                      </div>
+const TutorRouteWrapper = ({
+  selectedCourse, academicLoad, fetchStudents, loadingStudents, selectedBimestre,
+  currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
+}: any) => {
+  const { classroomId } = useParams<{ classroomId: string }>();
 
-                      <div onClick={() => handleFamilySelect(section)} className="group relative bg-white border-2 border-slate-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-slate-50/50">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="p-4 bg-slate-100 text-slate-600 rounded-2xl group-hover:bg-slate-800 group-hover:text-white transition-all shadow-inner">
-                            <Heart size={28} />
-                          </div>
-                          <span className="px-3 py-1 bg-slate-600 text-white text-[10px] font-black uppercase rounded-lg">Padres</span>
-                        </div>
-                        <h3 className="text-2xl font-black text-gray-800 mb-2">Compromisos de la Familia</h3>
-                        <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><Home size={16} /> {section.gradeSection}</p>
-                        <div className="pt-5 border-t border-slate-50 flex items-center justify-between text-slate-600 font-black text-sm uppercase tracking-widest">Calificar Padres →</div>
-                      </div>
-                    </React.Fragment>
-                  ))}
+  const course = selectedCourse || academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
-                  {academicLoad.map((course) => (
-                    <CourseCard key={course.id} course={course} onSelect={handleCourseSelect} isBimestreLocked={selectedBimestre?.isLocked || false} />
-                  ))}
+  useEffect(() => {
+    if (course) {
+      fetchStudents(course.classroomId);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [course]);
 
-                  {academicLoad.length === 0 && !loadingCourses && (
-                    <div className="col-span-full p-10 text-center text-gray-400 font-bold bg-white rounded-3xl border border-dashed border-gray-300">
-                      No tienes cursos asignados en este momento.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        ) : (
-          <div>
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
-                  <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
-                </button>
-                <div className="min-w-0">
-                  <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
-                    {isFamilyMode ? 'Compromisos de la Familia' : isTutorMode ? 'Módulo de Tutoría' : selectedCourse.courseName}
-                  </h2>
-                  <p className="text-sm text-gray-500 font-bold">{selectedCourse.gradeSection} • {selectedBimestre?.label}</p>
-                </div>
-              </div>
-            </div>
+  if (academicLoad.length > 0 && !course) return <Navigate to="/" replace />;
+  if (!course) return null;
 
-            {loadingStudents ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="animate-spin text-institutional" size={48} />
-              </div>
-            ) : selectedBimestre ? (
-              <GradingMatrix
-                role={currentUserRole}
-                course={selectedCourse}
-                students={students}
-                isTutorMode={isTutorMode}
-                isFamilyMode={isFamilyMode}
-                bimestre={selectedBimestre}
-                grades={grades}
-                appreciations={appreciations}
-                tutorData={tutorData}
-                familyCommitments={familyCommitments}
-                familyEvaluations={familyEvaluations}
-                onUpdateGrade={updateGrade}
-                onUpdateAppreciation={updateAppreciation}
-                onApproveAppreciation={approveAppreciation}
-                onUpdateTutorData={updateTutorData}
-                onUpdateFamilyEvaluation={updateFamilyEvaluation}
-              />
-            ) : null}
+  return (
+    <div>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
+            <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Módulo de Tutoría</h2>
+            <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
           </div>
-        )}
-      </main>
+        </div>
+      </div>
+
+      {loadingStudents ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-institutional" size={48} />
+        </div>
+      ) : selectedBimestre ? (
+        <GradingMatrix
+          role={currentUserRole}
+          course={course}
+          students={students}
+          isTutorMode={true}
+          isFamilyMode={false}
+          bimestre={selectedBimestre}
+          grades={grades}
+          appreciations={appreciations}
+          tutorData={tutorData}
+          familyCommitments={familyCommitments}
+          familyEvaluations={familyEvaluations}
+          onUpdateGrade={updateGrade}
+          onUpdateAppreciation={updateAppreciation}
+          onApproveAppreciation={approveAppreciation}
+          onUpdateTutorData={updateTutorData}
+          onUpdateFamilyEvaluation={updateFamilyEvaluation}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+const FamilyRouteWrapper = ({
+  selectedCourse, academicLoad, fetchStudents, loadingStudents, selectedBimestre,
+  currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
+}: any) => {
+  const { classroomId } = useParams<{ classroomId: string }>();
+
+  const course = selectedCourse || academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
+
+  useEffect(() => {
+    if (course) {
+      fetchStudents(course.classroomId);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [course]);
+
+  if (academicLoad.length > 0 && !course) return <Navigate to="/" replace />;
+  if (!course) return null;
+
+  return (
+    <div>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
+            <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Compromisos de la Familia</h2>
+            <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
+          </div>
+        </div>
+      </div>
+
+      {loadingStudents ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-institutional" size={48} />
+        </div>
+      ) : selectedBimestre ? (
+        <GradingMatrix
+          role={currentUserRole}
+          course={course}
+          students={students}
+          isTutorMode={false}
+          isFamilyMode={true}
+          bimestre={selectedBimestre}
+          grades={grades}
+          appreciations={appreciations}
+          tutorData={tutorData}
+          familyCommitments={familyCommitments}
+          familyEvaluations={familyEvaluations}
+          onUpdateGrade={updateGrade}
+          onUpdateAppreciation={updateAppreciation}
+          onApproveAppreciation={approveAppreciation}
+          onUpdateTutorData={updateTutorData}
+          onUpdateFamilyEvaluation={updateFamilyEvaluation}
+        />
+      ) : null}
     </div>
   );
 };
