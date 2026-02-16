@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, UserCheck, Heart, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, UserCheck, Heart, LogOut, Home } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface SidebarProps {
@@ -62,7 +62,15 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
                 ))}
             </nav>
 
-            <div className="p-6 border-t border-gray-100">
+            <div className="p-6 border-t border-gray-100 space-y-2">
+                <button
+                    onClick={() => window.location.href = import.meta.env.VITE_PORTAL_URL || '/'}
+                    className="w-full flex items-center gap-3 px-6 py-4 text-slate-400 hover:text-institutional rounded-2xl transition-all hover:bg-slate-50 border border-transparent hover:border-slate-100 group"
+                >
+                    <Home size={20} className="group-hover:scale-110 transition-transform" />
+                    <span className="font-bold text-sm">Volver al Portal</span>
+                </button>
+
                 <button
                     onClick={onLogout}
                     className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all group"
