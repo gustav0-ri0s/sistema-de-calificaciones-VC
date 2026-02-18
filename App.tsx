@@ -463,10 +463,10 @@ const App: React.FC = () => {
     navigate(`/familia/${section.classroomId}`);
   };
 
-  const handleBackToDashboard = () => {
+  const handleBackToCourses = () => {
     setSelectedCourse(null);
     setStudents([]);
-    navigate('/');
+    navigate('/mis-cursos');
   };
 
   const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => {
@@ -504,6 +504,10 @@ const App: React.FC = () => {
 
         if (error) throw error;
       }
+
+      // Update progress stats in background
+      fetchProgressStats();
+
     } catch (err: any) {
       console.error('Error saving grade:', err);
       alert('Error al guardar: ' + (err.message || 'Error de conexión'));
@@ -530,6 +534,8 @@ const App: React.FC = () => {
       if (error) {
         console.error('Error saving family evaluation:', error);
         alert('Error al guardar evaluación de familia');
+      } else {
+        fetchProgressStats();
       }
     });
   };
@@ -568,6 +574,8 @@ const App: React.FC = () => {
           tutor_id: userId,
           updated_at: new Date().toISOString()
         }, { onConflict: 'student_id, bimestre_id' });
+
+      fetchProgressStats();
 
     } catch (err) {
       console.error('Error saving appreciation:', err);
@@ -806,7 +814,7 @@ const App: React.FC = () => {
                           approveAppreciation={approveAppreciation}
                           updateTutorData={updateTutorData}
                           updateFamilyEvaluation={updateFamilyEvaluation}
-                          handleBackToDashboard={handleBackToDashboard}
+                          handleBackToDashboard={handleBackToCourses}
                           loadingCourses={loadingCourses}
                         />
                       }
@@ -835,7 +843,7 @@ const App: React.FC = () => {
                           approveAppreciation={approveAppreciation}
                           updateTutorData={updateTutorData}
                           updateFamilyEvaluation={updateFamilyEvaluation}
-                          handleBackToDashboard={handleBackToDashboard}
+                          handleBackToDashboard={handleBackToCourses}
                           loadingCourses={loadingCourses}
                         />
                       }
@@ -864,7 +872,7 @@ const App: React.FC = () => {
                           approveAppreciation={approveAppreciation}
                           updateTutorData={updateTutorData}
                           updateFamilyEvaluation={updateFamilyEvaluation}
-                          handleBackToDashboard={handleBackToDashboard}
+                          handleBackToDashboard={handleBackToCourses}
                           loadingCourses={loadingCourses}
                         />
                       }
