@@ -10,6 +10,7 @@ import AuthCallback from './components/AuthCallback';
 import RequireAuth from './components/RequireAuth';
 import Sidebar from './components/Sidebar';
 import TeacherCourseList from './components/TeacherCourseList';
+import TeacherDashboard from './components/TeacherDashboard';
 
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
 const ALLOWED_ROLES = ['DOCENTE', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
@@ -667,6 +668,30 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-6">
+                    {/* Global Bimestre Selector for Staff and Teachers alike */}
+                    <div className="hidden lg:flex items-center gap-1 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100 shadow-inner">
+                      {loadingBimestres ? (
+                        <div className="px-6 py-2"><Loader2 size={16} className="animate-spin text-institutional/30" /></div>
+                      ) : (
+                        bimestres.map((b) => (
+                          <button
+                            key={b.id}
+                            onClick={() => {
+                              if (!b.isLocked) setSelectedBimestre(b);
+                            }}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
+                              ? 'bg-institutional text-white shadow-lg shadow-institutional/20 scale-105'
+                              : b.isLocked
+                                ? 'text-gray-300 bg-transparent cursor-not-allowed opacity-50'
+                                : 'text-gray-400 hover:bg-white hover:shadow-sm'
+                              }`}
+                          >
+                            {b.shortLabel || b.label} {b.isLocked && <Lock size={12} />}
+                          </button>
+                        ))
+                      )}
+                    </div>
+
                     <div className="hidden sm:flex flex-col items-end">
                       <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Usuario Activo</span>
                       <div className="flex items-center gap-3">
@@ -712,82 +737,12 @@ const App: React.FC = () => {
                             />
                           )
                         ) : (
-                          <div>
-                            <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-                              <div>
-                                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2 tracking-tight">Carga Académica</h2>
-                                <p className="text-sm md:text-base text-gray-500 font-medium">Gestión de cursos y competencias asignadas para el {selectedBimestre?.label}.</p>
-                              </div>
-                              <div className="flex items-center gap-1 bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm overflow-x-auto no-scrollbar">
-                                {loadingBimestres ? (
-                                  <div className="px-4 py-2"><Loader2 size={20} className="animate-spin text-institutional" /></div>
-                                ) : (
-                                  bimestres.map((b) => (
-                                    <button
-                                      key={b.id}
-                                      onClick={() => {
-                                        if (!b.isLocked) setSelectedBimestre(b);
-                                      }}
-                                      className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
-                                        ? 'bg-institutional text-white shadow-md'
-                                        : b.isLocked
-                                          ? 'text-gray-300 bg-gray-50 cursor-not-allowed opacity-60'
-                                          : 'text-gray-400 hover:bg-gray-100'
-                                        }`}
-                                    >
-                                      {b.label} {b.isLocked && <Lock size={12} />}
-                                    </button>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-
-                            {loadingCourses ? (
-                              <div className="flex items-center justify-center h-64">
-                                <Loader2 className="animate-spin text-institutional" size={48} />
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {tutorSections.map((section) => (
-                                  <React.Fragment key={`tutor-frag-${section.id}`}>
-                                    <Link to={`/tutoria/${section.classroomId}`} className="group relative bg-white border-2 border-amber-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-amber-50/50 block">
-                                      <div className="flex justify-between items-start mb-6">
-                                        <div className="p-4 bg-amber-100 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-all shadow-inner">
-                                          <Star size={28} fill="currentColor" />
-                                        </div>
-                                        <span className="px-3 py-1 bg-amber-600 text-white text-[10px] font-black uppercase rounded-lg">Tutoría</span>
-                                      </div>
-                                      <h3 className="text-2xl font-black text-gray-800 mb-2">Módulo de Tutoría</h3>
-                                      <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><BookOpen size={16} /> {section.gradeSection}</p>
-                                      <div className="pt-5 border-t border-amber-50 flex items-center justify-between text-amber-600 font-black text-sm uppercase tracking-widest">Conducta →</div>
-                                    </Link>
-
-                                    <Link to={`/familia/${section.classroomId}`} className="group relative bg-white border-2 border-slate-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-slate-50/50 block">
-                                      <div className="flex justify-between items-start mb-6">
-                                        <div className="p-4 bg-slate-100 text-slate-600 rounded-2xl group-hover:bg-slate-800 group-hover:text-white transition-all shadow-inner">
-                                          <Heart size={28} />
-                                        </div>
-                                        <span className="px-3 py-1 bg-slate-600 text-white text-[10px] font-black uppercase rounded-lg">Padres</span>
-                                      </div>
-                                      <h3 className="text-2xl font-black text-gray-800 mb-2">Compromisos de la Familia</h3>
-                                      <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><Home size={16} /> {section.gradeSection}</p>
-                                      <div className="pt-5 border-t border-slate-50 flex items-center justify-between text-slate-600 font-black text-sm uppercase tracking-widest">Calificar Padres →</div>
-                                    </Link>
-                                  </React.Fragment>
-                                ))}
-
-                                {academicLoad.map((course) => (
-                                  <CourseCard key={course.id} course={course} onSelect={handleCourseSelect} isBimestreLocked={selectedBimestre?.isLocked || false} />
-                                ))}
-
-                                {academicLoad.length === 0 && !loadingCourses && (
-                                  <div className="col-span-full p-10 text-center text-gray-400 font-bold bg-white rounded-3xl border border-dashed border-gray-300">
-                                    No tienes cursos asignados en este momento.
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          <TeacherDashboard
+                            academicLoad={academicLoad}
+                            tutorSections={tutorSections}
+                            selectedBimestre={selectedBimestre}
+                            userName={userName}
+                          />
                         )
                       }
                     />
