@@ -246,7 +246,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         return {
           name: c.name,
           isFilled: !!gradeEntry,
-          grade: (gradeEntry?.grade || '') as GradeLevel
+          grade: (gradeEntry?.grade || '') as GradeLevel,
+          descriptiveConclusion: gradeEntry?.descriptiveConclusion || ''
         };
       });
       return { courseName: course.courseName, teacherName: course.teacherName, type: 'academic' as const, comps };
@@ -582,20 +583,28 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {(courseAudit.comps || []).map((c: any, i: number) => (
                           <div key={i} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
                             <span className="text-[10px] text-gray-600 font-bold">{c.name}</span>
-                            {c.isFilled ? (
-                              <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                            <div className="flex flex-col items-end gap-1">
+                              {c.isFilled ? (
+                                <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                   c.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
                                     c.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
                                       'bg-red-50 text-red-700 border-red-100'
-                                }`}>
-                                {c.grade}
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
-                                <span className="text-[9px] font-black text-red-300 uppercase">Sin Nota</span>
-                              </div>
-                            )}
+                                  }`}>
+                                  {c.grade}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
+                                  <span className="text-[9px] font-black text-red-300 uppercase">Sin Nota</span>
+                                </div>
+                              )}
+                              {c.descriptiveConclusion && (
+                                <div className="flex items-center gap-1.5 px-2 py-1 bg-institutional/5 text-institutional rounded-lg border border-institutional/10">
+                                  <MessageSquare size={10} />
+                                  <span className="text-[8px] font-bold uppercase truncate max-w-[80px]">Ver C.</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

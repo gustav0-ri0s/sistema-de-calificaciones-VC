@@ -17,7 +17,7 @@ interface GradingMatrixProps {
   tutorData: TutorValues[];
   familyCommitments?: FamilyCommitment[];
   familyEvaluations?: FamilyEvaluation[];
-  onUpdateGrade: (sId: string, cId: string, grade: GradeLevel) => void;
+  onUpdateGrade: (sId: string, cId: string, grade: GradeLevel, descriptiveConclusion?: string) => void;
   onUpdateAppreciation: (sId: string, comment: string) => void;
   onApproveAppreciation: (sId: string) => void;
   onUpdateTutorData: (sId: string, field: 'comportamiento' | 'tutoriaValores', value: string) => void;
@@ -43,9 +43,51 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   onUpdateFamilyEvaluation
 }) => {
   const [activeCommentStudent, setActiveCommentStudent] = useState<Student | null>(null);
+  const [activeConclusionData, setActiveConclusionData] = useState<{
+    student: Student;
+    competencyId: string;
+    grade: GradeLevel;
+    conclusion: string;
+  } | null>(null);
 
   const getGradeValue = (studentId: string, competencyId: string) => {
     return grades.find(g => g.studentId === studentId && g.competencyId === competencyId)?.grade || '';
+  };
+
+  const getGradeConclusion = (studentId: string, competencyId: string) => {
+    return grades.find(g => g.studentId === studentId && g.competencyId === competencyId)?.descriptiveConclusion || '';
+  };
+
+  const isConclusionMandatory = (grade: GradeLevel) => {
+    if (!course.level) return false;
+    const level = course.level.toUpperCase();
+    if (level.includes('PRIMARIA')) {
+      return grade === 'B' || grade === 'C';
+    }
+    if (level.includes('SECUNDARIA')) {
+      return grade === 'C';
+    }
+    return false;
+  };
+
+  const handleGradeChange = (student: Student, competencyId: string, grade: GradeLevel) => {
+    if (grade === '') {
+      onUpdateGrade(student.id, competencyId, grade, '');
+      return;
+    }
+
+    const currentConclusion = getGradeConclusion(student.id, competencyId);
+
+    if (isConclusionMandatory(grade) && !currentConclusion) {
+      setActiveConclusionData({
+        student,
+        competencyId,
+        grade,
+        conclusion: currentConclusion
+      });
+    } else {
+      onUpdateGrade(student.id, competencyId, grade, currentConclusion);
+    }
   };
 
   const getFamilyGrade = (studentId: string, fcId: string) => {
@@ -148,23 +190,51 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                     </div>
                   ))
                 ) : !isTutorMode ? (
-                  course.competencies.map((comp) => (
-                    <div key={comp.id} className="flex flex-col gap-1.5">
-                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-tight line-clamp-1">{comp.name}</span>
-                      <select
-                        disabled={bimestre.isLocked || role === 'Supervisor'}
-                        value={getGradeValue(student.id, comp.id)}
-                        onChange={(e) => onUpdateGrade(student.id, comp.id, e.target.value as GradeLevel)}
-                        className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(getGradeValue(student.id, comp.id))}`}
-                      >
-                        <option value="">Seleccionar Nota</option>
-                        <option value="AD">AD</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                      </select>
-                    </div>
-                  ))
+                  course.competencies.map((comp) => {
+                    const grade = getGradeValue(student.id, comp.id);
+                    const conclusion = getGradeConclusion(student.id, comp.id);
+                    const isMandatory = isConclusionMandatory(grade);
+                    const hasConclusion = conclusion.trim() !== '';
+
+                    return (
+                      <div key={comp.id} className="flex flex-col gap-1.5 border-b border-gray-50 pb-2 mb-2 last:border-0 last:mb-0">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tight line-clamp-1">{comp.name}</span>
+                        <div className="flex gap-2">
+                          <select
+                            disabled={bimestre.isLocked || role === 'Supervisor'}
+                            value={grade}
+                            onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
+                            className={`flex-1 p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(grade)}`}
+                          >
+                            <option value="">Nota</option>
+                            <option value="AD">AD</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                          </select>
+
+                          {grade && (
+                            <button
+                              onClick={() => setActiveConclusionData({
+                                student,
+                                competencyId: comp.id,
+                                grade,
+                                conclusion
+                              })}
+                              className={`p-3.5 rounded-xl border-2 transition-all shrink-0 ${hasConclusion
+                                ? 'bg-institutional border-institutional text-white shadow-md shadow-institutional/20'
+                                : isMandatory
+                                  ? 'bg-red-50 border-red-200 text-red-500 animate-pulse'
+                                  : 'bg-white border-gray-200 text-gray-300'
+                                }`}
+                            >
+                              <MessageSquare size={18} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
                   <>
                     <div className="grid grid-cols-2 gap-3">
@@ -329,21 +399,48 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                     ) : !isTutorMode ? (
                       course.competencies.map((comp) => {
                         const grade = getGradeValue(student.id, comp.id);
+                        const conclusion = getGradeConclusion(student.id, comp.id);
+                        const isMandatory = isConclusionMandatory(grade);
+                        const hasConclusion = conclusion.trim() !== '';
+
                         return (
                           <td key={comp.id} className="p-3 border-l border-gray-50">
-                            <select
-                              disabled={bimestre.isLocked || role === 'Supervisor'}
-                              value={grade}
-                              onChange={(e) => onUpdateGrade(student.id, comp.id, e.target.value as GradeLevel)}
-                              className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md'
-                                }`}
-                            >
-                              <option value="">-</option>
-                              <option value="AD">AD</option>
-                              <option value="A">A</option>
-                              <option value="B">B</option>
-                              <option value="C">C</option>
-                            </select>
+                            <div className="flex flex-col gap-2">
+                              <select
+                                disabled={bimestre.isLocked || role === 'Supervisor'}
+                                value={grade}
+                                onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
+                                className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md'
+                                  }`}
+                              >
+                                <option value="">-</option>
+                                <option value="AD">AD</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                              </select>
+
+                              {grade && (
+                                <button
+                                  onClick={() => setActiveConclusionData({
+                                    student,
+                                    competencyId: comp.id,
+                                    grade,
+                                    conclusion
+                                  })}
+                                  title={isMandatory ? 'C. Descriptiva (Obligatoria)' : 'C. Descriptiva (Opcional)'}
+                                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all border-2 ${hasConclusion
+                                    ? 'bg-institutional/10 border-institutional text-institutional'
+                                    : isMandatory
+                                      ? 'bg-red-50 border-red-200 text-red-500 animate-pulse'
+                                      : 'bg-gray-50 border-gray-100 text-gray-300'
+                                    } hover:brightness-95`}
+                                >
+                                  <MessageSquare size={12} />
+                                  {hasConclusion ? 'Ver Conclusión' : isMandatory ? 'C. Obligatoria' : 'Agregar C.'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         );
                       })
@@ -445,6 +542,26 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
           </div>
         )}
       </div>
+
+      {activeConclusionData && (
+        <DescriptiveCommentModal
+          role={role}
+          student={activeConclusionData.student}
+          currentComment={activeConclusionData.conclusion}
+          isApproved={false} // Conclusions are currently not approved individually or we don't have that state yet
+          onClose={() => setActiveConclusionData(null)}
+          onSave={(val) => {
+            onUpdateGrade(
+              activeConclusionData.student.id,
+              activeConclusionData.competencyId,
+              activeConclusionData.grade,
+              val
+            );
+            setActiveConclusionData(null);
+          }}
+          isLocked={bimestre.isLocked}
+        />
+      )}
 
       {activeCommentStudent && (
         <DescriptiveCommentModal

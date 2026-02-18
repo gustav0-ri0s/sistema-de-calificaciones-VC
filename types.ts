@@ -22,6 +22,7 @@ export interface AcademicLoad {
   teacherName: string;
   classroomId: number; // Added for DB link
   areaId: number;     // Added for DB link
+  level?: string;      // Added for Level validation (Primaria/Secundaria)
 }
 
 export interface Bimestre {
@@ -37,6 +38,7 @@ export interface GradeEntry {
   courseId: string;
   competencyId: string;
   grade: GradeLevel;
+  descriptiveConclusion?: string;
 }
 
 export interface AppreciationEntry {

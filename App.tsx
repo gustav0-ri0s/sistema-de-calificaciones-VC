@@ -206,6 +206,7 @@ const App: React.FC = () => {
           teacherName: '', // Can be filled if needed
           classroomId: item.classroom_id || 0,
           areaId: item.area_id || 0,
+          level: item.classrooms?.level,
           competencies: item.curricular_areas?.competencies?.map((c: any) => ({
             id: c.id.toString(),
             name: c.name
@@ -230,6 +231,7 @@ const App: React.FC = () => {
               teacherName: '',
               classroomId: tutorClassroom.id,
               areaId: 0,
+              level: tutorClassroom.level,
               competencies: []
             });
           }
@@ -325,7 +327,8 @@ const App: React.FC = () => {
           studentId: g.student_id,
           courseId: selectedCourse?.id || '',
           competencyId: g.competency_id.toString(),
-          grade: g.grade as GradeLevel
+          grade: g.grade as GradeLevel,
+          descriptiveConclusion: g.descriptive_conclusion || ''
         })));
       }
     } catch (err) {
@@ -404,13 +407,13 @@ const App: React.FC = () => {
     navigate('/');
   };
 
-  const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel) => {
+  const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => {
     if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
 
     // Optimistic Update
     setGrades(prev => {
       const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === competencyId));
-      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId, grade }];
+      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId, grade, descriptiveConclusion }];
     });
 
     if (!selectedBimestre) return;
@@ -421,13 +424,13 @@ const App: React.FC = () => {
         competency_id: parseInt(competencyId),
         bimestre_id: parseInt(selectedBimestre.id),
         grade: grade,
+        descriptive_conclusion: descriptiveConclusion,
         updated_at: new Date().toISOString()
       }, { onConflict: 'student_id, competency_id, bimestre_id' });
 
       if (error) throw error;
     } catch (err) {
       console.error('Error saving grade:', err);
-      // Optional: Revert optimistic update if needed
     }
   };
 
