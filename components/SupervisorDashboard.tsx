@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserRole, Student, AcademicLoad, GradeEntry, AppreciationEntry, TutorValues, Bimestre, GradeLevel, FamilyCommitment, FamilyEvaluation } from '../types';
-import { ShieldCheck, Users, FileText, CheckCircle2, Search, LayoutGrid, ChevronRight, ArrowLeft, Info, X, Lock, Loader2, MessageSquare, Check, RotateCw } from 'lucide-react';
+import { ShieldCheck, Users, FileText, CheckCircle2, Search, LayoutGrid, ChevronRight, ArrowLeft, Info, X, Lock, Loader2, MessageSquare, Check, RotateCw, Save } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
 import { supabase } from '../lib/supabase';
 
@@ -16,7 +16,7 @@ interface SupervisorDashboardProps {
   familyCommitments: FamilyCommitment[];
   familyEvaluations: FamilyEvaluation[];
   onApproveAppreciation: (sId: string) => void;
-  onUpdateAppreciation: (sId: string, comment: string) => void;
+  onUpdateAppreciation: (sId: string, comment: string, shouldSend?: boolean) => void;
   onUpdateGrade: (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => void;
 }
 
@@ -585,10 +585,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                             {appreciation.comment.trim() !== '' && (
                               <div className="flex flex-col items-center gap-1.5">
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : appreciation.isSent ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 border-slate-200 text-slate-400'
                                   }`}>
-                                  {appreciation.isApproved ? <CheckCircle2 size={16} /> : <Check size={16} />}
-                                  <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                                  {appreciation.isApproved ? <CheckCircle2 size={16} /> : appreciation.isSent ? <RotateCw size={16} className="animate-spin" /> : <Save size={16} />}
+                                  <span className="text-[10px] font-black uppercase tracking-tight">
+                                    {appreciation.isApproved ? 'Aprobado' : appreciation.isSent ? 'En Revisión' : 'Borrador'}
+                                  </span>
                                 </div>
                                 {!bimestre.isLocked && (
                                   <button
@@ -650,9 +652,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           student={activeCommentStudent}
           currentComment={appreciations.find(a => a.studentId === activeCommentStudent.id)?.comment || ''}
           isApproved={appreciations.find(a => a.studentId === activeCommentStudent.id)?.isApproved || false}
+          isSent={appreciations.find(a => a.studentId === activeCommentStudent.id)?.isSent || false}
           onClose={() => setActiveCommentStudent(null)}
-          onSave={(val) => {
-            onUpdateAppreciation(activeCommentStudent.id, val);
+          onSave={(val, shouldSend) => {
+            onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
             setActiveCommentStudent(null);
           }}
           isLocked={bimestre.isLocked}

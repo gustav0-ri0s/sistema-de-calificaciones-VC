@@ -45,6 +45,7 @@ export interface AppreciationEntry {
   studentId: string;
   comment: string;
   isApproved: boolean;
+  isSent: boolean;
 }
 
 export interface TutorValues {

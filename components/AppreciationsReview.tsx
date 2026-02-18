@@ -56,7 +56,8 @@ const AppreciationsReview: React.FC<AppreciationsReviewProps> = ({
                 const mapped = data.map((item: any) => ({
                     studentId: item.student_id,
                     comment: item.comment,
-                    isApproved: item.is_approved,
+                    isApproved: item.is_approved === true,
+                    isSent: item.is_approved !== null,
                     studentName: `${item.students?.last_name}, ${item.students?.first_name}`,
                     classroom: `${item.students?.classrooms?.grade} ${item.students?.classrooms?.section} ${item.students?.classrooms?.level}`,
                     studentObj: {
@@ -81,8 +82,8 @@ const AppreciationsReview: React.FC<AppreciationsReviewProps> = ({
     const filteredList = appreciationsList.filter(item => {
         const matchesSearch = item.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.classroom.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = filter === 'all' ||
-            (filter === 'pending' && !item.isApproved) ||
+        const matchesFilter = (filter === 'all' && item.isSent) ||
+            (filter === 'pending' && item.isSent && !item.isApproved) ||
             (filter === 'approved' && item.isApproved);
         return matchesSearch && matchesFilter;
     });
@@ -203,9 +204,10 @@ const AppreciationsReview: React.FC<AppreciationsReviewProps> = ({
                     student={activeCommentStudent}
                     currentComment={appreciationsList.find(a => a.studentId === activeCommentStudent.id)?.comment || ''}
                     isApproved={appreciationsList.find(a => a.studentId === activeCommentStudent.id)?.isApproved || false}
+                    isSent={appreciationsList.find(a => a.studentId === activeCommentStudent.id)?.isSent || false}
                     onClose={() => setActiveCommentStudent(null)}
-                    onSave={(val) => {
-                        onUpdateAppreciation(activeCommentStudent.id, val);
+                    onSave={(val, shouldSend) => {
+                        onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
                         setActiveCommentStudent(null);
                         // Optimistic
                         setAppreciationsList(prev => prev.map(p => p.studentId === activeCommentStudent.id ? { ...p, comment: val } : p));

@@ -372,7 +372,8 @@ const App: React.FC = () => {
         const mappedAppreciations: AppreciationEntry[] = data.map((a: any) => ({
           studentId: a.student_id,
           comment: a.comment || '',
-          isApproved: a.is_approved || false
+          isApproved: a.is_approved === true,
+          isSent: a.is_approved !== null
         }));
         setAppreciations(mappedAppreciations);
       }
@@ -558,10 +559,19 @@ const App: React.FC = () => {
     });
   };
 
-  const updateAppreciation = async (studentId: string, comment: string) => {
+  const updateAppreciation = async (studentId: string, comment: string, shouldSend: boolean = false) => {
     if (selectedBimestre?.isLocked) return;
 
-    const shouldResetApproval = currentUserRole === 'Docente';
+    // Logic:
+    // If shouldSend is true: is_approved = false (Pending Review)
+    // If shouldSend is false (Save as Draft): is_approved = null (Draft)
+    // If we are a supervisor, we don't change the sent status, just the comment.
+
+    // Determine is_approved for DB
+    let nextApprovedState: boolean | null = null;
+    if (currentUserRole === 'Docente') {
+      nextApprovedState = shouldSend ? false : null;
+    }
 
     setAppreciations(prev => {
       const existing = prev.find(a => a.studentId === studentId);
@@ -569,26 +579,29 @@ const App: React.FC = () => {
       return [...filtered, {
         studentId,
         comment,
-        isApproved: shouldResetApproval ? false : (existing ? existing.isApproved : false)
+        isApproved: currentUserRole === 'Docente' ? false : (existing ? existing.isApproved : false),
+        isSent: currentUserRole === 'Docente' ? shouldSend : (existing ? existing.isSent : false)
       }];
     });
 
     if (!selectedBimestre) return;
 
     try {
-      const currentApp = appreciations.find(a => a.studentId === studentId);
-      const isApprovedState = shouldResetApproval ? false : (currentApp?.isApproved || false);
+      const updateData: any = {
+        student_id: studentId,
+        bimestre_id: parseInt(selectedBimestre.id),
+        comment: comment,
+        tutor_id: userId,
+        updated_at: new Date().toISOString()
+      };
+
+      if (currentUserRole === 'Docente') {
+        updateData.is_approved = nextApprovedState;
+      }
 
       await supabase
         .from('student_appreciations')
-        .upsert({
-          student_id: studentId,
-          bimestre_id: parseInt(selectedBimestre.id),
-          comment: comment,
-          is_approved: isApprovedState,
-          tutor_id: userId,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'student_id, bimestre_id' });
+        .upsert(updateData, { onConflict: 'student_id, bimestre_id' });
 
       fetchProgressStats();
 

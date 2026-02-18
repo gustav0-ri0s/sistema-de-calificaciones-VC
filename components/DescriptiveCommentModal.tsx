@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Student, UserRole } from '../types';
-import { X, MessageSquare, Save, Sparkles, CheckCircle2, ShieldAlert, Loader2, Wand2, Check, RotateCcw } from 'lucide-react';
+import { X, MessageSquare, Save, Sparkles, CheckCircle2, ShieldAlert, Loader2, Wand2, Check, RotateCcw, RotateCw, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 
@@ -10,8 +10,9 @@ interface DescriptiveCommentModalProps {
   student: Student;
   currentComment: string;
   isApproved: boolean;
+  isSent: boolean;
   onClose: () => void;
-  onSave: (comment: string) => void;
+  onSave: (comment: string, shouldSend?: boolean) => void;
   isLocked: boolean;
   title?: string;
 }
@@ -21,6 +22,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
   student,
   currentComment,
   isApproved,
+  isSent,
   onClose,
   onSave,
   isLocked,
@@ -29,10 +31,35 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
   const [comment, setComment] = useState(currentComment);
   const [isImproving, setIsImproving] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  const handleSave = () => {
+  // Debounced auto-save
+  React.useEffect(() => {
+    if (comment === currentComment) return;
     if (isLocked) return;
-    onSave(comment);
+
+    setSaveStatus('saving');
+    const timer = setTimeout(() => {
+      onSave(comment, false); // Auto-save always as draft
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [comment]);
+
+  const handleManualSave = () => {
+    if (isLocked) return;
+    onSave(comment, false);
+    onClose();
+  };
+
+  const handleSendForReview = () => {
+    if (isLocked) return;
+    if (window.confirm('¿Está seguro de enviar esta apreciación para revisión? Una vez enviada, el supervisor podrá verla y aprobarla.')) {
+      onSave(comment, true);
+      onClose();
+    }
   };
 
   const handleImproveWriting = async () => {
@@ -40,32 +67,16 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
     setIsImproving(true);
     setAiSuggestion(null);
     try {
-      console.log('Iniciando mejora de escritura con IA...');
       const { data, error } = await supabase.functions.invoke('improve-writing', {
         body: { text: comment }
       });
 
-      if (error) {
-        console.error('Error de Supabase Function:', error);
-        alert(`Error al conectar con la IA: ${error.message || 'Error desconocido'}`);
-        throw error;
-      }
-
-      if (data?.error) {
-        console.error('Error devuelto por la IA:', data.error);
-        alert(`La IA devolvió un error: ${data.error}`);
-        return;
-      }
-
+      if (error) throw error;
       if (data?.improvedText) {
-        console.log('Mejora recibida:', data.improvedText);
         setAiSuggestion(data.improvedText);
-      } else {
-        alert('La IA no devolvió ninguna sugerencia. Revisa que el texto sea válido.');
       }
     } catch (err: any) {
-      console.error('Error fatal al mejorar escritura:', err);
-      alert(`Error inesperado: ${err.message || 'Consulta la consola (F12) para más detalles.'}`);
+      console.error('Error improving writing:', err);
     } finally {
       setIsImproving(false);
     }
@@ -77,7 +88,6 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
       setAiSuggestion(null);
     }
   };
-
 
   const isEditable = !isLocked;
 
@@ -97,9 +107,16 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {saveStatus === 'saving' && <span className="text-[10px] text-gray-400 animate-pulse uppercase font-black">Guardando...</span>}
+            {saveStatus === 'saved' && <span className="text-[10px] text-green-500 flex items-center gap-1 uppercase font-black"><Check size={12} /> Borrador guardado</span>}
             {isApproved && (
               <div className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase">
                 <CheckCircle2 size={12} /> Visto Bueno
+              </div>
+            )}
+            {!isApproved && isSent && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase">
+                <RotateCw size={12} className="animate-spin" /> En Revisión
               </div>
             )}
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
@@ -122,21 +139,30 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
             placeholder="Escriba aquí el progreso del estudiante..."
           ></textarea>
 
+          {isSent && !isApproved && role === 'Docente' && isEditable && (
+            <div className="mt-4 flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <Info size={16} className="text-blue-500 shrink-0" />
+              <p className="text-[11px] text-blue-700 leading-tight">
+                Esta apreciación ya ha sido enviada para revisión. Cualquier cambio la devolverá a estado borrador.
+              </p>
+            </div>
+          )}
+
           {isApproved && role === 'Docente' && isEditable && (
             <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2">
               <ShieldAlert size={16} className="text-amber-500 shrink-0" />
               <p className="text-[11px] text-amber-700 leading-tight">
-                <strong>Advertencia:</strong> Editar este comentario eliminará el "Visto Bueno" del supervisor y requerirá una nueva aprobación.
+                <strong>Advertencia:</strong> Editar este comentario eliminará el "Visto Bueno" y requerirá una nueva revisión.
               </p>
             </div>
           )}
 
           {!isApproved && !aiSuggestion && (
-            <div className="mt-4 flex items-center justify-between gap-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+            <div className="mt-4 flex items-center justify-between gap-2 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
               <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-blue-500" />
-                <p className="text-[11px] text-blue-600 leading-tight">
-                  <strong>Tip pedagógico:</strong> Describa logros concretos basados en el estándar de aprendizaje del ciclo.
+                <Sparkles size={16} className="text-indigo-500" />
+                <p className="text-[11px] text-indigo-600 leading-tight">
+                  Asegúrate de detallar los logros del periodo.
                 </p>
               </div>
 
@@ -144,8 +170,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
                 <button
                   onClick={handleImproveWriting}
                   disabled={isImproving || !comment.trim()}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-50"
-                  title="Mejorar redacción con Inteligencia Artificial"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm disabled:opacity-50"
                 >
                   {isImproving ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
                   Mejorar con IA
@@ -159,11 +184,8 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-indigo-600">
                   <Sparkles size={14} />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Propuesta de Mejora (IA)</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider">Propuesta (IA)</span>
                 </div>
-                <button onClick={() => setAiSuggestion(null)} className="text-gray-400 hover:text-gray-600">
-                  <X size={14} />
-                </button>
               </div>
               <p className="text-xs text-indigo-900 leading-relaxed mb-4 italic">"{aiSuggestion}"</p>
               <div className="flex gap-2">
@@ -173,33 +195,33 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
                 >
                   <Check size={12} /> Usar Sugerencia
                 </button>
-                <button
-                  onClick={handleImproveWriting}
-                  className="p-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
-                  title="Generar otra"
-                >
-                  <RotateCcw size={14} />
-                </button>
               </div>
             </div>
           )}
-
         </div>
 
-        <div className="p-6 bg-gray-50 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            {isEditable ? 'Cancelar' : 'Cerrar'}
-          </button>
-          {isEditable && (
+        <div className="p-6 bg-gray-50 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleSave}
-              className="px-6 py-2 bg-institutional text-white text-sm font-bold rounded-xl shadow-lg shadow-institutional/20 flex items-center gap-2 hover:brightness-105 active:scale-95 transition-all"
+              onClick={onClose}
+              className="px-5 py-2 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors"
             >
-              <Save size={16} /> Guardar Cambios
+              Cerrar
             </button>
+          </div>
+
+          {isEditable && (
+            <div className="flex items-center gap-3">
+              {!isApproved && (
+                <button
+                  disabled={isImproving || !comment.trim()}
+                  onClick={handleSendForReview}
+                  className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <CheckCircle2 size={16} /> Enviar para Revisión
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

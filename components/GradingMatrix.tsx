@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, Student, UserRole, FamilyCommitment, FamilyEvaluation } from '../types';
-import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus } from 'lucide-react';
+import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus, RotateCw, Save } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
 import MassiveConclusionModal from './MassiveConclusionModal';
 import { generateGlobalReportCard } from '../utils/pdfGenerator';
@@ -20,7 +20,7 @@ interface GradingMatrixProps {
   familyCommitments?: FamilyCommitment[];
   familyEvaluations?: FamilyEvaluation[];
   onUpdateGrade: (sId: string, cId: string, grade: GradeLevel, descriptiveConclusion?: string) => void;
-  onUpdateAppreciation: (sId: string, comment: string) => void;
+  onUpdateAppreciation: (sId: string, comment: string, shouldSend?: boolean) => void;
   onApproveAppreciation: (sId: string) => void;
   onUpdateTutorData: (sId: string, field: 'comportamiento' | 'tutoriaValores', value: string) => void;
   onUpdateFamilyEvaluation: (sId: string, fcId: string, grade: GradeLevel) => void;
@@ -437,7 +437,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4 overflow-hidden">
                             {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
-                              <div className={`w-3 h-3 rounded-full shrink-0 ${appreciation.comment.trim() !== '' ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-gray-200'}`}></div>
+                              <div className={`w-3 h-3 rounded-full shrink-0 ${appreciation.isApproved ? 'bg-green-500 shadow-sm shadow-green-200' : appreciation.isSent ? 'bg-blue-500 animate-pulse' : appreciation.comment.trim() !== '' ? 'bg-amber-400' : 'bg-gray-200'}`} title={appreciation.isApproved ? 'Aprobado' : appreciation.isSent ? 'En Revisión' : appreciation.comment.trim() !== '' ? 'Borrador' : 'Sin completar'}></div>
                             )}
                             <span className="truncate">{student.fullName}</span>
                           </div>
@@ -571,10 +571,10 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
                                 {appreciation.comment.trim() !== '' && (role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
                                   <div className="flex flex-col items-center gap-1.5">
-                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : appreciation.isSent ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 border-slate-200 text-slate-400'
                                       }`}>
-                                      <Check size={18} strokeWidth={4} />
-                                      <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                                      {appreciation.isApproved ? <Check size={18} strokeWidth={4} /> : appreciation.isSent ? <RotateCw size={18} className="animate-spin" /> : <Save size={18} />}
+                                      <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : appreciation.isSent ? 'En Revisión' : 'Borrador'}</span>
                                     </div>
                                     {(role === 'Supervisor' || role === 'Administrador') && !bimestre.isLocked && (
                                       <button
@@ -630,7 +630,8 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
             role={role}
             student={activeConclusionData.student}
             currentComment={activeConclusionData.conclusion}
-            isApproved={false} // Conclusions are currently not approved individually or we don't have that state yet
+            isApproved={false}
+            isSent={true}
             onClose={() => setActiveConclusionData(null)}
             onSave={(val) => {
               onUpdateGrade(
@@ -652,9 +653,10 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
             student={activeCommentStudent}
             currentComment={getAppreciation(activeCommentStudent.id).comment}
             isApproved={getAppreciation(activeCommentStudent.id).isApproved}
+            isSent={getAppreciation(activeCommentStudent.id).isSent}
             onClose={() => setActiveCommentStudent(null)}
-            onSave={(val) => {
-              onUpdateAppreciation(activeCommentStudent.id, val);
+            onSave={(val, shouldSend) => {
+              onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
               setActiveCommentStudent(null);
             }}
             isLocked={bimestre.isLocked}
