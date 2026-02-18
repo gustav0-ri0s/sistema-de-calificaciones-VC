@@ -134,6 +134,14 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
         </div>
       )}
 
+      {/* Indicador de Auto-guardado para Docentes */}
+      {!bimestre.isLocked && role === 'Docente' && (
+        <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl self-end animate-in fade-in slide-in-from-right-4">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Cambios se guardan automáticamente</span>
+        </div>
+      )}
+
       {/* COMPROMISOS DE LA FAMILIA - LISTADO DE ÍTEMS */}
       {isFamilyMode && (
         <div className="animate-in slide-in-from-top duration-500">
@@ -379,13 +387,12 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                       familyCommitments.map((fc) => {
                         const grade = getFamilyGrade(student.id, fc.id);
                         return (
-                          <td key={fc.id} className="p-4 border-l border-gray-50">
+                          <td key={fc.id} className="p-3 border-l border-gray-50">
                             <select
                               disabled={bimestre.isLocked || role === 'Supervisor'}
                               value={grade}
                               onChange={(e) => onUpdateFamilyEvaluation(student.id, fc.id, e.target.value as GradeLevel)}
-                              className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md'
-                                }`}
+                              className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                             >
                               <option value="">-</option>
                               <option value="AD">AD</option>
@@ -394,7 +401,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                               <option value="C">C</option>
                             </select>
                           </td>
-                        )
+                        );
                       })
                     ) : !isTutorMode ? (
                       course.competencies.map((comp) => {
@@ -582,3 +589,4 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 };
 
 export default GradingMatrix;
+

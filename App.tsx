@@ -408,7 +408,7 @@ const App: React.FC = () => {
   };
 
   const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => {
-    if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
+    if (selectedBimestre?.isLocked) return;
 
     // Optimistic Update
     setGrades(prev => {

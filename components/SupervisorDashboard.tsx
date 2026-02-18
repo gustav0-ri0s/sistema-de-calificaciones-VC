@@ -747,36 +747,46 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </button>
                 <button
                   onClick={async () => {
+                    // Start loading for immediate feedback if needed
+                    const studentId = editingGradeData.student.id;
+                    const compId = editingGradeData.competencyId;
+                    const gradeVal = editingGradeData.grade;
+                    const concVal = editingGradeData.conclusion;
+
                     // Save to DB
                     await onUpdateGrade(
-                      editingGradeData.student.id,
-                      editingGradeData.competencyId,
-                      editingGradeData.grade,
-                      editingGradeData.conclusion
+                      studentId,
+                      compId,
+                      gradeVal,
+                      concVal
                     );
 
-                    // Update local state
+                    // Update local state for immediate visual consistency in detailed view
                     setSectionGrades(prev => {
-                      const existingIndex = prev.findIndex(g =>
-                        g.studentId === editingGradeData.student.id &&
-                        g.competencyId === editingGradeData.competencyId
-                      );
+                      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compId));
+                      if (gradeVal === '') return filtered;
 
-                      const newItem = {
-                        studentId: editingGradeData.student.id,
-                        competencyId: editingGradeData.competencyId,
+                      return [...filtered, {
+                        studentId: studentId,
+                        competencyId: compId,
                         courseId: '',
-                        grade: editingGradeData.grade,
-                        descriptiveConclusion: editingGradeData.conclusion
-                      };
-
-                      if (existingIndex >= 0) {
-                        const next = [...prev];
-                        next[existingIndex] = newItem;
-                        return next;
-                      }
-                      return [...prev, newItem];
+                        grade: gradeVal,
+                        descriptiveConclusion: concVal
+                      }];
                     });
+
+                    // Recalculate global stats for this section (Optimistic)
+                    setSectionsData(prev => prev.map(s => {
+                      if (s.id === selectedSectionId) {
+                        // This is a rough estimation, for precise count we'd need more logic
+                        // but setting refreshTrigger is better
+                        return s;
+                      }
+                      return s;
+                    }));
+
+                    // Trigger a real refresh of stats
+                    setRefreshTrigger(prev => prev + 1);
 
                     setEditingGradeData(null);
                   }}
