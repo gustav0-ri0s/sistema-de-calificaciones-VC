@@ -138,11 +138,12 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
                 </p>
               </div>
 
-              {role !== 'Docente' && isEditable && (
+              {isEditable && (
                 <button
                   onClick={handleImproveWriting}
                   disabled={isImproving || !comment.trim()}
                   className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg text-[10px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all shadow-sm disabled:opacity-50"
+                  title="Mejorar redacción con Inteligencia Artificial"
                 >
                   {isImproving ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
                   Mejorar con IA
