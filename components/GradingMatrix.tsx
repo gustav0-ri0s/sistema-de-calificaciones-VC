@@ -111,13 +111,23 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
   const getGradeColorClass = (grade: GradeLevel) => {
     switch (grade) {
-      case 'AD': return 'text-blue-800 font-black bg-blue-100 ring-1 ring-blue-300';
-      case 'A': return 'text-emerald-800 font-black bg-emerald-100 ring-1 ring-emerald-300';
-      case 'B': return 'text-amber-800 font-black bg-amber-100 ring-1 ring-amber-300';
-      case 'C': return 'text-red-800 font-black bg-red-100 ring-1 ring-red-300';
+      case 'AD': return 'text-blue-900 font-extrabold bg-blue-100 ring-2 ring-blue-300';
+      case 'A': return 'text-emerald-900 font-extrabold bg-emerald-100 ring-2 ring-emerald-300';
+      case 'B': return 'text-amber-900 font-extrabold bg-amber-100 ring-2 ring-amber-300';
+      case 'C': return 'text-red-900 font-extrabold bg-red-100 ring-2 ring-red-300';
       default: return 'text-slate-400 font-bold bg-slate-50 ring-1 ring-slate-200';
     }
   };
+
+  const renderGradeOptions = (placeholder: string = '-') => (
+    <>
+      <option value="" className="text-slate-400 bg-white">{placeholder}</option>
+      <option value="AD" className="text-blue-700 bg-blue-50 font-black" style={{ color: '#1e40af', backgroundColor: '#eff6ff' }}>AD - Logro Destacado</option>
+      <option value="A" className="text-emerald-700 bg-emerald-50 font-black" style={{ color: '#047857', backgroundColor: '#ecfdf5' }}>A - Logro Esperado</option>
+      <option value="B" className="text-amber-700 bg-amber-50 font-black" style={{ color: '#b45309', backgroundColor: '#fffbeb' }}>B - En Proceso</option>
+      <option value="C" className="text-red-700 bg-red-50 font-black" style={{ color: '#b91c1c', backgroundColor: '#fef2f2' }}>C - En Inicio</option>
+    </>
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -212,13 +222,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                             disabled={bimestre.isLocked || role === 'Supervisor'}
                             value={grade}
                             onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
-                            className={`flex-1 p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(grade)}`}
+                            className={`flex-1 p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} transition-all focus:ring-4 focus:ring-blue-200`}
                           >
-                            <option value="" style={{ color: '#94a3b8' }}>Nota</option>
-                            <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
-                            <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
-                            <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
-                            <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
+                            {renderGradeOptions('Nota')}
                           </select>
 
                           {grade && (
@@ -252,13 +258,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                           disabled={bimestre.isLocked || role === 'Supervisor'}
                           value={tData.comportamiento}
                           onChange={(e) => onUpdateTutorData(student.id, 'comportamiento', e.target.value as GradeLevel)}
-                          className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)}`}
+                          className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)} transition-all`}
                         >
-                          <option value="" style={{ color: '#94a3b8' }}>-</option>
-                          <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
-                          <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
-                          <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
-                          <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
+                          {renderGradeOptions()}
                         </select>
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -267,13 +269,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                           disabled={bimestre.isLocked || role === 'Supervisor'}
                           value={tData.tutoriaValores}
                           onChange={(e) => onUpdateTutorData(student.id, 'tutoriaValores', e.target.value as GradeLevel)}
-                          className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)}`}
+                          className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)} transition-all`}
                         >
-                          <option value="" style={{ color: '#94a3b8' }}>-</option>
-                          <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
-                          <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
-                          <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
-                          <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
+                          {renderGradeOptions()}
                         </select>
                       </div>
                     </div>
@@ -392,13 +390,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                               disabled={bimestre.isLocked || role === 'Supervisor'}
                               value={grade}
                               onChange={(e) => onUpdateFamilyEvaluation(student.id, fc.id, e.target.value as GradeLevel)}
-                              className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                              className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:shadow-lg hover:scale-[1.02]'} transition-all`}
                             >
-                              <option value="" style={{ color: '#94a3b8' }}>-</option>
-                              <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
-                              <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
-                              <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
-                              <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
+                              {renderGradeOptions()}
                             </select>
                           </td>
                         );
@@ -417,14 +411,10 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                                 disabled={bimestre.isLocked || role === 'Supervisor'}
                                 value={grade}
                                 onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
-                                className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md'
+                                className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md hover:scale-[1.02]'
                                   }`}
                               >
-                                <option value="" style={{ color: '#94a3b8' }}>-</option>
-                                <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
-                                <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
-                                <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
-                                <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
+                                {renderGradeOptions()}
                               </select>
 
                               {grade && (
