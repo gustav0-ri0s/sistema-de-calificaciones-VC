@@ -111,21 +111,31 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
   const getGradeColorClass = (grade: GradeLevel) => {
     switch (grade) {
-      case 'AD': return 'text-blue-900 font-extrabold bg-blue-100 ring-2 ring-blue-300';
-      case 'A': return 'text-emerald-900 font-extrabold bg-emerald-100 ring-2 ring-emerald-300';
-      case 'B': return 'text-amber-900 font-extrabold bg-amber-100 ring-2 ring-amber-300';
-      case 'C': return 'text-red-900 font-extrabold bg-red-100 ring-2 ring-red-300';
-      default: return 'text-slate-400 font-bold bg-slate-50 ring-1 ring-slate-200';
+      case 'AD': return 'bg-blue-100 ring-2 ring-blue-300';
+      case 'A': return 'bg-emerald-100 ring-2 ring-emerald-300';
+      case 'B': return 'bg-amber-100 ring-2 ring-amber-300';
+      case 'C': return 'bg-red-100 ring-2 ring-red-300';
+      default: return 'bg-slate-50 ring-1 ring-slate-200';
+    }
+  };
+
+  const getGradeTextColor = (grade: GradeLevel) => {
+    switch (grade) {
+      case 'AD': return 'text-blue-900';
+      case 'A': return 'text-emerald-900';
+      case 'B': return 'text-amber-900';
+      case 'C': return 'text-red-900';
+      default: return 'text-slate-400';
     }
   };
 
   const renderGradeOptions = (placeholder: string = '-') => (
     <>
       <option value="" className="text-slate-400 bg-white">{placeholder}</option>
-      <option value="AD" className="text-blue-700 bg-blue-50 font-black" style={{ color: '#1e40af', backgroundColor: '#eff6ff' }}>AD - Logro Destacado</option>
-      <option value="A" className="text-emerald-700 bg-emerald-50 font-black" style={{ color: '#047857', backgroundColor: '#ecfdf5' }}>A - Logro Esperado</option>
-      <option value="B" className="text-amber-700 bg-amber-50 font-black" style={{ color: '#b45309', backgroundColor: '#fffbeb' }}>B - En Proceso</option>
-      <option value="C" className="text-red-700 bg-red-50 font-black" style={{ color: '#b91c1c', backgroundColor: '#fef2f2' }}>C - En Inicio</option>
+      <option value="AD" style={{ color: '#1e40af', backgroundColor: '#eff6ff', fontWeight: 'bold' }}>AD - Logro Destacado</option>
+      <option value="A" style={{ color: '#047857', backgroundColor: '#ecfdf5', fontWeight: 'bold' }}>A - Logro Esperado</option>
+      <option value="B" style={{ color: '#b45309', backgroundColor: '#fffbeb', fontWeight: 'bold' }}>B - En Proceso</option>
+      <option value="C" style={{ color: '#b91c1c', backgroundColor: '#fef2f2', fontWeight: 'bold' }}>C - En Inicio</option>
     </>
   );
 
@@ -218,14 +228,19 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                       <div key={comp.id} className="flex flex-col gap-1.5 border-b border-gray-50 pb-2 mb-2 last:border-0 last:mb-0">
                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-tight line-clamp-1">{comp.name}</span>
                         <div className="flex gap-2">
-                          <select
-                            disabled={bimestre.isLocked || role === 'Supervisor'}
-                            value={grade}
-                            onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
-                            className={`flex-1 p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} transition-all focus:ring-4 focus:ring-blue-200`}
-                          >
-                            {renderGradeOptions('Nota')}
-                          </select>
+                          <div className="flex-1 relative group">
+                            <select
+                              disabled={bimestre.isLocked || role === 'Supervisor'}
+                              value={grade}
+                              onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
+                              className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} transition-all focus:ring-4 focus:ring-blue-200 text-transparent selection:bg-transparent appearance-none`}
+                            >
+                              {renderGradeOptions('Nota')}
+                            </select>
+                            <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(grade)}`}>
+                              {grade || 'Nota'}
+                            </div>
+                          </div>
 
                           {grade && (
                             <button
@@ -254,25 +269,35 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[9px] font-black text-amber-600 uppercase">Conducta</span>
-                        <select
-                          disabled={bimestre.isLocked || role === 'Supervisor'}
-                          value={tData.comportamiento}
-                          onChange={(e) => onUpdateTutorData(student.id, 'comportamiento', e.target.value as GradeLevel)}
-                          className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)} transition-all`}
-                        >
-                          {renderGradeOptions()}
-                        </select>
+                        <div className="relative group w-full">
+                          <select
+                            disabled={bimestre.isLocked || role === 'Supervisor'}
+                            value={tData.comportamiento}
+                            onChange={(e) => onUpdateTutorData(student.id, 'comportamiento', e.target.value as GradeLevel)}
+                            className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)} transition-all text-transparent appearance-none`}
+                          >
+                            {renderGradeOptions()}
+                          </select>
+                          <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(tData.comportamiento)}`}>
+                            {tData.comportamiento || '-'}
+                          </div>
+                        </div>
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[9px] font-black text-amber-600 uppercase">Valores</span>
-                        <select
-                          disabled={bimestre.isLocked || role === 'Supervisor'}
-                          value={tData.tutoriaValores}
-                          onChange={(e) => onUpdateTutorData(student.id, 'tutoriaValores', e.target.value as GradeLevel)}
-                          className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)} transition-all`}
-                        >
-                          {renderGradeOptions()}
-                        </select>
+                        <div className="relative group w-full">
+                          <select
+                            disabled={bimestre.isLocked || role === 'Supervisor'}
+                            value={tData.tutoriaValores}
+                            onChange={(e) => onUpdateTutorData(student.id, 'tutoriaValores', e.target.value as GradeLevel)}
+                            className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)} transition-all text-transparent appearance-none`}
+                          >
+                            {renderGradeOptions()}
+                          </select>
+                          <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(tData.tutoriaValores)}`}>
+                            {tData.tutoriaValores || '-'}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -386,14 +411,19 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                         const grade = getFamilyGrade(student.id, fc.id);
                         return (
                           <td key={fc.id} className="p-3 border-l border-gray-50">
-                            <select
-                              disabled={bimestre.isLocked || role === 'Supervisor'}
-                              value={grade}
-                              onChange={(e) => onUpdateFamilyEvaluation(student.id, fc.id, e.target.value as GradeLevel)}
-                              className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:shadow-lg hover:scale-[1.02]'} transition-all`}
-                            >
-                              {renderGradeOptions()}
-                            </select>
+                            <div className="relative group w-full">
+                              <select
+                                disabled={bimestre.isLocked || role === 'Supervisor'}
+                                value={grade}
+                                onChange={(e) => onUpdateFamilyEvaluation(student.id, fc.id, e.target.value as GradeLevel)}
+                                className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:shadow-lg hover:scale-[1.02]'} transition-all text-transparent appearance-none`}
+                              >
+                                {renderGradeOptions()}
+                              </select>
+                              <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(grade)}`}>
+                                {grade || '-'}
+                              </div>
+                            </div>
                           </td>
                         );
                       })
@@ -407,15 +437,20 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                         return (
                           <td key={comp.id} className="p-3 border-l border-gray-50">
                             <div className="flex flex-col gap-2">
-                              <select
-                                disabled={bimestre.isLocked || role === 'Supervisor'}
-                                value={grade}
-                                onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
-                                className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md hover:scale-[1.02]'
-                                  }`}
-                              >
-                                {renderGradeOptions()}
-                              </select>
+                              <div className="relative group w-full">
+                                <select
+                                  disabled={bimestre.isLocked || role === 'Supervisor'}
+                                  value={grade}
+                                  onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
+                                  className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md hover:scale-[1.02]'
+                                    } text-transparent`}
+                                >
+                                  {renderGradeOptions()}
+                                </select>
+                                <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(grade)}`}>
+                                  {grade || '-'}
+                                </div>
+                              </div>
 
                               {grade && (
                                 <button
@@ -444,32 +479,34 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                     ) : (
                       <>
                         <td className="p-3 border-l border-amber-100/50">
-                          <select
-                            disabled={bimestre.isLocked || role === 'Supervisor'}
-                            value={tData.comportamiento}
-                            onChange={(e) => onUpdateTutorData(student.id, 'comportamiento', e.target.value as GradeLevel)}
-                            className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            <option value="">-</option>
-                            <option value="AD">AD</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                          </select>
+                          <div className="relative group w-full">
+                            <select
+                              disabled={bimestre.isLocked || role === 'Supervisor'}
+                              value={tData.comportamiento}
+                              onChange={(e) => onUpdateTutorData(student.id, 'comportamiento', e.target.value as GradeLevel)}
+                              className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} text-transparent appearance-none transition-all`}
+                            >
+                              {renderGradeOptions()}
+                            </select>
+                            <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(tData.comportamiento)}`}>
+                              {tData.comportamiento || '-'}
+                            </div>
+                          </div>
                         </td>
                         <td className="p-3 border-l border-amber-100/50">
-                          <select
-                            disabled={bimestre.isLocked || role === 'Supervisor'}
-                            value={tData.tutoriaValores}
-                            onChange={(e) => onUpdateTutorData(student.id, 'tutoriaValores', e.target.value as GradeLevel)}
-                            className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            <option value="">-</option>
-                            <option value="AD">AD</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                          </select>
+                          <div className="relative group w-full">
+                            <select
+                              disabled={bimestre.isLocked || role === 'Supervisor'}
+                              value={tData.tutoriaValores}
+                              onChange={(e) => onUpdateTutorData(student.id, 'tutoriaValores', e.target.value as GradeLevel)}
+                              className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'} text-transparent appearance-none transition-all`}
+                            >
+                              {renderGradeOptions()}
+                            </select>
+                            <div className={`absolute inset-0 flex items-center justify-center pointer-events-none font-black text-sm ${getGradeTextColor(tData.tutoriaValores)}`}>
+                              {tData.tutoriaValores || '-'}
+                            </div>
+                          </div>
                         </td>
                         {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
                           <td className="p-3 text-center border-l border-gray-100 bg-gray-50/30">
