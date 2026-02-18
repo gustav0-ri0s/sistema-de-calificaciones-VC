@@ -38,14 +38,7 @@ const App: React.FC = () => {
   const [appreciations, setAppreciations] = useState<AppreciationEntry[]>([]);
   const [tutorData, setTutorData] = useState<TutorValues[]>([]);
 
-  const [familyCommitments] = useState<FamilyCommitment[]>([
-    { id: 'fc1', text: 'Acompaña en el aprendizaje diario' },
-    { id: 'fc2', text: 'Cumple estrictamente con el uniforme institucional' },
-    { id: 'fc3', text: 'Envía loncheras nutritivas siguiendo el cronograma' },
-    { id: 'fc4', text: 'Asiste puntualmente a todas las reuniones de aula' },
-    { id: 'fc5', text: 'Fomenta la práctica de valores en el hogar' },
-    { id: 'fc6', text: 'Revisa diariamente el cuaderno de control/agenda' }
-  ]);
+  const [familyCommitments, setFamilyCommitments] = useState<FamilyCommitment[]>([]);
   const [familyEvaluations, setFamilyEvaluations] = useState<FamilyEvaluation[]>([]);
 
   // Auth State Listener
@@ -56,6 +49,7 @@ const App: React.FC = () => {
         setUserEmail(session.user.email || '');
         fetchUserProfile(session.user.id);
         fetchBimestres();
+        fetchFamilyCommitments();
       } else {
         // Even if not logged in, we might want to fetch bimestres? 
         // Usually better to wait for auth if DB has RLS.
@@ -144,6 +138,27 @@ const App: React.FC = () => {
       console.error('Error fetching bimestres:', err);
     } finally {
       setLoadingBimestres(false);
+    }
+  };
+
+  const fetchFamilyCommitments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('family_commitments')
+        .select('*')
+        .eq('active', true)
+        .order('id', { ascending: true });
+
+      if (error) throw error;
+
+      if (data) {
+        setFamilyCommitments(data.map((c: any) => ({
+          id: c.id.toString(),
+          text: c.description
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching family commitments:', err);
     }
   };
 
