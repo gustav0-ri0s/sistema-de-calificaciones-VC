@@ -147,7 +147,7 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                             assignmentId: `fam-${section.classroomId}`,
                             totalExpected: totalFamExpected,
                             filledCount: famFilled || 0,
-                            percentage: Math.round(((famFilled || 0) / totalFamExpected) * 100)
+                            percentage: Math.min(100, Math.round(((famFilled || 0) / totalFamExpected) * 100))
                         };
                     }
                 }
