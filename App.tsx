@@ -230,6 +230,7 @@ const App: React.FC = () => {
           profile_id,
           classroom_id,
           area_id,
+          competency_id,
           classrooms (
             id, grade, section, level
           ),
@@ -243,24 +244,57 @@ const App: React.FC = () => {
       if (error) throw error;
 
       const tId = tutorClassroomId ? Number(tutorClassroomId) : null;
-      const mappedLoad: AcademicLoad[] = data.map((item: any) => ({
-        id: item.id.toString(),
-        courseName: item.curricular_areas?.name || 'Curso Desconocido',
-        gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
-        isTutor: tId === Number(item.classroom_id),
-        teacherName: '', // Can be filled if needed
-        classroomId: Number(item.classroom_id) || 0,
-        areaId: item.area_id || 0,
-        level: item.classrooms?.level,
-        competencies: item.curricular_areas?.competencies?.map((c: any) => ({
+
+      // Group assignments by classroom and area to handle multi-competency assignments
+      const grouped = new Map<string, AcademicLoad>();
+
+      data?.forEach((item: any) => {
+        const key = `${item.classroom_id}-${item.area_id}`;
+        const allAreaComps = item.curricular_areas?.competencies?.map((c: any) => ({
           id: c.id.toString(),
           name: c.name
-        })) || []
-      }));
+        })) || [];
+
+        // Determine competencies for this specific assignment row
+        let filteredComps: any[] = [];
+        if (item.competency_id === null) {
+          // Assigned to the whole area
+          filteredComps = allAreaComps;
+        } else {
+          // Assigned to a specific competency
+          const matched = allAreaComps.find((c: any) => c.id.toString() === item.competency_id.toString());
+          if (matched) filteredComps = [matched];
+        }
+
+        if (grouped.has(key)) {
+          const existing = grouped.get(key)!;
+          // Merge competencies, avoiding duplicates
+          const existingIds = new Set(existing.competencies.map(c => c.id));
+          filteredComps.forEach(c => {
+            if (!existingIds.has(c.id)) {
+              existing.competencies.push(c);
+            }
+          });
+        } else {
+          grouped.set(key, {
+            id: item.id.toString(),
+            courseName: item.curricular_areas?.name || 'Curso Desconocido',
+            gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
+            isTutor: tId === Number(item.classroom_id),
+            teacherName: '',
+            classroomId: Number(item.classroom_id) || 0,
+            areaId: item.area_id || 0,
+            level: item.classrooms?.level,
+            competencies: filteredComps
+          });
+        }
+      });
+
+      const mappedLoad = Array.from(grouped.values());
 
       // If the teacher is a tutor but has no course_assignment in their tutor classroom,
       // inject a virtual entry so the tutoring module still appears
-      if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === tutorClassroomId)) {
+      if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === Number(tutorClassroomId))) {
         const { data: tutorClassroom } = await supabase
           .from('classrooms')
           .select('id, grade, section, level')

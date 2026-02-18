@@ -1,5 +1,5 @@
 
--- Function to calculate teacher progress
+-- Function to calculate teacher progress with competency-level assignment support
 CREATE OR REPLACE FUNCTION get_teacher_completion_stats(p_teacher_id UUID, p_bimestre_id BIGINT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -27,14 +27,14 @@ DECLARE
     student_count INTEGER;
     competency_count INTEGER;
     commitment_count INTEGER;
-    
-    -- Level detection
-    v_level TEXT;
+    temp_filled INTEGER;
+    temp_missing INTEGER;
     
 BEGIN
     -- 1. REGULAR COURSES PROGRESS
     FOR course_rec IN (
-        SELECT cal.id, cal.classroom_id, cal.area_id
+        -- Select assignments including the new competency_id field
+        SELECT cal.id, cal.classroom_id, cal.area_id, cal.competency_id
         FROM custom_academic_load cal
         WHERE cal.teacher_id = p_teacher_id
         AND cal.is_tutor = false
@@ -42,65 +42,71 @@ BEGIN
         -- Count students in this classroom
         SELECT count(*) INTO student_count FROM students s WHERE s.classroom_id = course_rec.classroom_id;
         
-        -- Count competencies for this course (linked via areas)
-        SELECT count(*) INTO competency_count FROM competencies c WHERE c.area_id = course_rec.area_id;
+        -- Count assigned competencies (all area competencies if null, or just 1 if specified)
+        IF course_rec.competency_id IS NULL THEN
+            SELECT count(*) INTO competency_count FROM competencies c WHERE c.area_id = course_rec.area_id;
+        ELSE
+            competency_count := 1;
+        END IF;
         
         -- Add to total expected
         total_expected_grades := total_expected_grades + (student_count * competency_count);
         
-        -- Count actual filled grades
-        SELECT count(*) INTO current_filled_grades 
-        FROM student_grades sg
-        JOIN students s ON sg.student_id = s.id
-        WHERE s.classroom_id = course_rec.classroom_id
-        AND sg.competency_id IN (SELECT id FROM competencies WHERE area_id = course_rec.area_id)
-        AND sg.bimestre_id = p_bimestre_id
-        AND sg.grade IS NOT NULL AND sg.grade != '';
-
-        -- Check for missing mandatory conclusions
-        -- Logic: If level is Primaria (assume 1-6 grades?) or Secundaria (7-11?)
-        -- Simplification: If grade is C, conclusion mandatory. If Primaria and B, mandatory.
-        -- We need level. let's assume we can get it from classroom -> grade_level or similar.
-        -- For now, let's stick to the core rule: C always needs conclusion. B needs it if Primaria.
-        -- Let's query Missing 'C' conclusions first.
+        -- Count actual filled grades for the assigned scope
+        IF course_rec.competency_id IS NULL THEN
+            SELECT count(*) INTO temp_filled
+            FROM student_grades sg
+            JOIN students s ON sg.student_id = s.id
+            WHERE s.classroom_id = course_rec.classroom_id
+            AND sg.competency_id IN (SELECT id FROM competencies WHERE area_id = course_rec.area_id)
+            AND sg.bimestre_id = p_bimestre_id
+            AND sg.grade IS NOT NULL AND sg.grade != '';
+            
+            -- Check for missing mandatory C conclusions
+            SELECT count(*) INTO temp_missing
+            FROM student_grades sg
+            JOIN students s ON sg.student_id = s.id
+            WHERE s.classroom_id = course_rec.classroom_id
+            AND sg.competency_id IN (SELECT id FROM competencies WHERE area_id = course_rec.area_id)
+            AND sg.bimestre_id = p_bimestre_id
+            AND sg.grade = 'C'
+            AND (sg.descriptive_conclusion IS NULL OR trim(sg.descriptive_conclusion) = '');
+        ELSE
+            SELECT count(*) INTO temp_filled
+            FROM student_grades sg
+            JOIN students s ON sg.student_id = s.id
+            WHERE s.classroom_id = course_rec.classroom_id
+            AND sg.competency_id = course_rec.competency_id
+            AND sg.bimestre_id = p_bimestre_id
+            AND sg.grade IS NOT NULL AND sg.grade != '';
+            
+            -- Check for missing mandatory C conclusions
+            SELECT count(*) INTO temp_missing
+            FROM student_grades sg
+            JOIN students s ON sg.student_id = s.id
+            WHERE s.classroom_id = course_rec.classroom_id
+            AND sg.competency_id = course_rec.competency_id
+            AND sg.bimestre_id = p_bimestre_id
+            AND sg.grade = 'C'
+            AND (sg.descriptive_conclusion IS NULL OR trim(sg.descriptive_conclusion) = '');
+        END IF;
         
-        SELECT count(*) INTO missing_mandatory_conclusions
-        FROM student_grades sg
-        JOIN students s ON sg.student_id = s.id
-        WHERE s.classroom_id = course_rec.classroom_id
-        AND sg.competency_id IN (SELECT id FROM competencies WHERE area_id = course_rec.area_id)
-        AND sg.bimestre_id = p_bimestre_id
-        AND sg.grade = 'C'
-        AND (sg.descriptive_conclusion IS NULL OR trim(sg.descriptive_conclusion) = '');
-        
-        -- Add missing B if Primaria (assuming specific grade names or ids for logical check, skipping for now to avoid complexity unless requested strictly)
-        -- User said "Conclusiones descriptivas obligatorias".
+        current_filled_grades := current_filled_grades + temp_filled;
+        missing_mandatory_conclusions := missing_mandatory_conclusions + temp_missing;
     END LOOP;
 
     -- 2. TUTOR PROGRESS
-    -- Check if teacher is a tutor for any classroom
-    -- In custom_academic_load, is_tutor is true
+    -- Identify the tutor classroom
     SELECT classroom_id INTO tutor_classroom_id 
     FROM custom_academic_load 
     WHERE teacher_id = p_teacher_id AND is_tutor = true 
     LIMIT 1;
 
     IF tutor_classroom_id IS NOT NULL THEN
-        -- Get student count
         SELECT count(*) INTO student_count FROM students WHERE classroom_id = tutor_classroom_id;
         
-        -- A. Behavior/Values Grades (2 per student: Behavior + Values)
+        -- 2A. Behavior and Values (2 per student)
         total_expected_tutor_grades := student_count * 2;
-        
-        SELECT count(*) INTO current_filled_tutor_grades
-        FROM student_behavior_grades sbg
-        WHERE sbg.student_id IN (SELECT id FROM students WHERE classroom_id = tutor_classroom_id)
-        AND sbg.bimestre_id = p_bimestre_id
-        AND (sbg.behavior_grade IS NOT NULL AND sbg.behavior_grade != '')
-        AND (sbg.values_grade IS NOT NULL AND sbg.values_grade != '');
-        -- Note: The above query counts records where BOTH are filled. 
-        -- Actually, we should count filled fields.
-        -- Correct approach:
         SELECT (
             count(CASE WHEN behavior_grade IS NOT NULL AND behavior_grade != '' THEN 1 END) +
             count(CASE WHEN values_grade IS NOT NULL AND values_grade != '' THEN 1 END)
@@ -109,9 +115,9 @@ BEGIN
         WHERE sbg.student_id IN (SELECT id FROM students WHERE classroom_id = tutor_classroom_id)
         AND sbg.bimestre_id = p_bimestre_id;
         
-        -- B. Family Evaluations
-        SELECT count(*) INTO commitment_count FROM family_commitments;
-        total_expected_family_grades := student_count * commitment_count;
+        -- 2B. Family Commitments
+        SELECT count(*) INTO commitment_count FROM family_commitments WHERE active = true;
+        total_expected_family_grades := student_count * (CASE WHEN commitment_count > 0 THEN commitment_count ELSE 0 END);
         
         SELECT count(*) INTO current_filled_family_grades
         FROM family_evaluations fe
@@ -119,28 +125,30 @@ BEGIN
         AND fe.bimestre_id = p_bimestre_id
         AND fe.grade IS NOT NULL AND fe.grade != '';
         
-        -- C. Appreciations (Must be Approved)
+        -- 2C. Appreciations (requires approval)
         total_students_for_appreciation := student_count;
-        
         SELECT count(*) INTO approved_appreciations_count
         FROM student_appreciations sa
         WHERE sa.student_id IN (SELECT id FROM students WHERE classroom_id = tutor_classroom_id)
         AND sa.bimestre_id = p_bimestre_id
         AND sa.is_approved = true;
-        
     END IF;
 
-    -- 3. Consolidate
+    -- 3. Consolidated Result for Frontend Consumption
     RETURN jsonb_build_object(
-        'course_grades_expected', total_expected_grades,
-        'course_grades_filled', current_filled_grades + missing_mandatory_conclusions, -- Subtract? No, just raw counts.
-        'tutor_grades_expected', total_expected_tutor_grades,
-        'tutor_grades_filled', current_filled_tutor_grades,
-        'family_grades_expected', total_expected_family_grades,
-        'family_grades_filled', current_filled_family_grades,
-        'appreciations_expected', total_students_for_appreciation,
-        'appreciations_approved', approved_appreciations_count,
-        'missing_mandatory_conclusions', missing_mandatory_conclusions
+        'course_stats', jsonb_build_object(
+            'total_needed', total_expected_grades,
+            'total_filled', current_filled_grades,
+            'missing_conclusions', missing_mandatory_conclusions
+        ),
+        'tutor_stats', jsonb_build_object(
+            'behavior_needed', total_expected_tutor_grades,
+            'behavior_filled', current_filled_tutor_grades,
+            'family_needed', total_expected_family_grades,
+            'family_filled', current_filled_family_grades,
+            'appreciations_needed', total_students_for_appreciation,
+            'appreciations_approved', approved_appreciations_count
+        )
     );
 END;
 $$;

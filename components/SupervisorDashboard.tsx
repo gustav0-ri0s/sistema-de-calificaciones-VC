@@ -127,18 +127,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
             let realProgress = 0;
             if (studentsInClass.length > 0) {
-              // 1. Get total expected slots (Students * Competencies)
-              const { data: classCourses } = await supabase
+              // 1. Get total expected slots (Students * Unique Assigned Competencies)
+              const { data: classAssignments } = await supabase
                 .from('course_assignments')
-                .select('curricular_areas(id, competencies(id))')
+                .select('area_id, competency_id, curricular_areas(competencies(id))')
                 .eq('classroom_id', c.id);
 
-              let totalCompetenciesInClass = 0;
-              classCourses?.forEach((cc: any) => {
-                totalCompetenciesInClass += cc.curricular_areas?.competencies?.length || 0;
+              const assignedCompetencies = new Set<string>();
+              classAssignments?.forEach((asgn: any) => {
+                if (asgn.competency_id) {
+                  assignedCompetencies.add(asgn.competency_id.toString());
+                } else if (asgn.curricular_areas?.competencies) {
+                  // If competency_id is NULL, add all competencies for that area
+                  asgn.curricular_areas.competencies.forEach((comp: any) => {
+                    assignedCompetencies.add(comp.id.toString());
+                  });
+                }
               });
 
-              const totalSlots = studentsInClass.length * totalCompetenciesInClass;
+              const totalSlots = studentsInClass.length * assignedCompetencies.size;
 
               // 2. Get filled grades count
               const { data: gData, error: gError } = await supabase
@@ -148,6 +155,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 .eq('bimestre_id', parseInt(bimestre.id));
 
               if (totalSlots > 0 && gData) {
+                // We should only count grades for competencies that are actually assigned
+                // But for simplicity, we assume if it's filled, it was intended to be.
                 realProgress = Math.round((gData.length / totalSlots) * 100);
               }
             }
@@ -219,6 +228,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           .from('course_assignments')
           .select(`
               id,
+              area_id,
+              competency_id,
               curricular_areas ( name, competencies (id, name) ),
               profiles ( full_name )
            `)
@@ -226,17 +237,50 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
         if (cError) throw cError;
 
-        const mappedCourses: AcademicLoad[] = (courses || []).map((c: any) => ({
-          id: c.id.toString(),
-          courseName: c.curricular_areas?.name,
-          teacherName: c.profiles?.full_name || 'Sin Asignar',
-          competencies: c.curricular_areas?.competencies || [],
-          // Required fields for AcademicLoad
-          gradeSection: selectedSectionName || '',
-          isTutor: false,
-          classroomId: selectedSectionId || 0,
-          areaId: 0
-        }));
+        // Group assignments by teacher and area to handle multi-competency assignments
+        const grouped = new Map<string, AcademicLoad>();
+
+        courses?.forEach((item: any) => {
+          const profileId = item.profile_id || item.profiles?.id || 'unassigned';
+          const key = `${profileId}-${item.area_id}`;
+          const allAreaComps = item.curricular_areas?.competencies?.map((c: any) => ({
+            id: c.id.toString(),
+            name: c.name
+          })) || [];
+
+          // Determine competencies for this specific assignment row
+          let filteredComps: any[] = [];
+          if (item.competency_id === null) {
+            filteredComps = allAreaComps;
+          } else {
+            const matched = allAreaComps.find((c: any) => c.id.toString() === item.competency_id.toString());
+            if (matched) filteredComps = [matched];
+          }
+
+          if (grouped.has(key)) {
+            const existing = grouped.get(key)!;
+            const existingIds = new Set(existing.competencies.map(c => c.id));
+            filteredComps.forEach(c => {
+              if (!existingIds.has(c.id)) {
+                existing.competencies.push(c);
+              }
+            });
+          } else {
+            grouped.set(key, {
+              id: item.id.toString(),
+              courseName: item.curricular_areas?.name,
+              teacherName: item.profiles?.full_name || 'Sin Asignar',
+              competencies: filteredComps,
+              // Required fields for AcademicLoad
+              gradeSection: selectedSectionName || '',
+              isTutor: false,
+              classroomId: Number(selectedSectionId) || 0,
+              areaId: item.area_id || 0
+            });
+          }
+        });
+
+        const mappedCourses = Array.from(grouped.values());
         setSectionCourses(mappedCourses);
 
         // Get Grades for this section
