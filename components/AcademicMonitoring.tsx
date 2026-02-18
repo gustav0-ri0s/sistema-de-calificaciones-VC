@@ -747,7 +747,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
 
                         return (
                           <div key={commitment.id} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                            <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.description}>{commitment.description}</span>
+                            <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.text}>{commitment.text}</span>
                             <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
                               grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                 grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
