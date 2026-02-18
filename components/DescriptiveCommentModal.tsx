@@ -13,6 +13,7 @@ interface DescriptiveCommentModalProps {
   onClose: () => void;
   onSave: (comment: string) => void;
   isLocked: boolean;
+  title?: string;
 }
 
 const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
@@ -22,7 +23,8 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
   isApproved,
   onClose,
   onSave,
-  isLocked
+  isLocked,
+  title = 'Conclusiones Descriptivas'
 }) => {
   const [comment, setComment] = useState(currentComment);
   const [isImproving, setIsImproving] = useState(false);
@@ -90,7 +92,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
               <MessageSquare size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900">Conclusiones Descriptivas</h3>
+              <h3 className="font-bold text-gray-900">{title}</h3>
               <p className="text-xs text-gray-500 font-medium">{student.fullName}</p>
             </div>
           </div>

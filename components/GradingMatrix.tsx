@@ -642,6 +642,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
               setActiveConclusionData(null);
             }}
             isLocked={bimestre.isLocked}
+            title="Conclusiones Descriptivas"
           />
         )}
 
@@ -657,6 +658,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
               setActiveCommentStudent(null);
             }}
             isLocked={bimestre.isLocked}
+            title="Apreciación Académica"
           />
         )}
 
