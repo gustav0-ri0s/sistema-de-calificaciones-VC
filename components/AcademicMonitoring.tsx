@@ -44,6 +44,18 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
   familyEvaluations,
   onUpdateGrade
 }) => {
+  useEffect(() => {
+    console.log("AcademicMonitoring Data:", {
+      role,
+      bimestreId: bimestre?.id,
+      tutorDataCount: tutorData?.length,
+      familyCommitmentsCount: familyCommitments?.length,
+      familyEvaluationsCount: familyEvaluations?.length,
+      tutorDataSample: tutorData?.[0],
+      gradesCount: grades?.length
+    });
+  }, [tutorData, familyCommitments, familyEvaluations, grades, bimestre, role]);
+
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
   const [selectedSectionName, setSelectedSectionName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -637,119 +649,120 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
-              {(getStudentAudit(auditingStudent.id) || []).length === 0 ? (
-                <div className="text-center text-gray-400">No hay cursos asignados para auditar.</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {(getStudentAudit(auditingStudent.id) || []).map((courseAudit, idx) => (
-                    <div key={idx} className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
-                      <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">{courseAudit.courseName}</h4>
-                      <span className="text-[10px] text-gray-400 block mb-4">{courseAudit.teacherName}</span>
-                      <div className="space-y-1">
-                        {(courseAudit.comps || []).map((c: any, i: number) => (
-                          <div key={i} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                            <span className="text-[10px] text-gray-600 font-bold">{c.name}</span>
-                            <div className="flex flex-col items-end gap-1">
-                              {c.isFilled ? (
-                                <button
-                                  onClick={() => setEditingGradeData({
-                                    student: auditingStudent,
-                                    competencyId: c.id.toString(),
-                                    grade: c.grade as GradeLevel,
-                                    conclusion: c.descriptiveConclusion
-                                  })}
-                                  className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all hover:scale-105 ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                    c.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
-                                      c.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                        'bg-red-50 text-red-700 border-red-100'
-                                    }`}>
-                                  {c.grade}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setEditingGradeData({
-                                    student: auditingStudent,
-                                    competencyId: c.id.toString(),
-                                    grade: '',
-                                    conclusion: ''
-                                  })}
-                                  className="flex items-center gap-1 hover:bg-gray-100 p-1 rounded-md transition-colors"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
-                                  <span className="text-[9px] font-black text-red-300 uppercase">Sin Nota</span>
-                                </button>
-                              )}
-                              {c.descriptiveConclusion && (
-                                <div className="flex items-center gap-1.5 px-2 py-1 bg-institutional/5 text-institutional rounded-lg border border-institutional/10">
-                                  <MessageSquare size={10} />
-                                  <span className="text-[8px] font-bold uppercase truncate max-w-[80px]">Ver C.</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* TARJETA DE TUTORÍA */}
-                  <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
-                    <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">TUTORÍA</h4>
-                    <span className="text-[10px] text-gray-400 block mb-4">Evaluación del Tutor</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {(getStudentAudit(auditingStudent.id) || []).length === 0 && (
+                  <div className="md:col-span-2 text-center text-gray-400 py-4 border-2 border-dashed border-gray-100 rounded-2xl">
+                    No hay cursos académicos asignados.
+                  </div>
+                )}
+                {(getStudentAudit(auditingStudent.id) || []).map((courseAudit, idx) => (
+                  <div key={idx} className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                    <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">{courseAudit.courseName}</h4>
+                    <span className="text-[10px] text-gray-400 block mb-4">{courseAudit.teacherName}</span>
                     <div className="space-y-1">
-                      {(() => {
-                        const tutorEntry = tutorData.find(t => t.studentId === auditingStudent.id) || { comportamiento: '', tutoriaValores: '' };
-                        return [
-                          { label: 'COMPORTAMIENTO', grade: tutorEntry.comportamiento },
-                          { label: 'TUTORÍA DE VALORES', grade: tutorEntry.tutoriaValores }
-                        ].map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                            <span className="text-[10px] text-gray-600 font-bold">{item.label}</span>
-                            <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!item.grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
-                              item.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                item.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
-                                  item.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                    'bg-red-50 text-red-700 border-red-100'
-                              }`}>
-                              {item.grade || '-'}
-                            </div>
+                      {(courseAudit.comps || []).map((c: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                          <span className="text-[10px] text-gray-600 font-bold">{c.name}</span>
+                          <div className="flex flex-col items-end gap-1">
+                            {c.isFilled ? (
+                              <button
+                                onClick={() => setEditingGradeData({
+                                  student: auditingStudent,
+                                  competencyId: c.id.toString(),
+                                  grade: c.grade as GradeLevel,
+                                  conclusion: c.descriptiveConclusion
+                                })}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all hover:scale-105 ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                  c.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                    c.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                      'bg-red-50 text-red-700 border-red-100'
+                                  }`}>
+                                {c.grade}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setEditingGradeData({
+                                  student: auditingStudent,
+                                  competencyId: c.id.toString(),
+                                  grade: '',
+                                  conclusion: ''
+                                })}
+                                className="flex items-center gap-1 hover:bg-gray-100 p-1 rounded-md transition-colors"
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
+                                <span className="text-[9px] font-black text-red-300 uppercase">Sin Nota</span>
+                              </button>
+                            )}
+                            {c.descriptiveConclusion && (
+                              <div className="flex items-center gap-1.5 px-2 py-1 bg-institutional/5 text-institutional rounded-lg border border-institutional/10">
+                                <MessageSquare size={10} />
+                                <span className="text-[8px] font-bold uppercase truncate max-w-[80px]">Ver C.</span>
+                              </div>
+                            )}
                           </div>
-                        ));
-                      })()}
+                        </div>
+                      ))}
                     </div>
                   </div>
+                ))}
 
-                  {/* TARJETA DE PADRES DE FAMILIA */}
-                  <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
-                    <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">PADRES DE FAMILIA</h4>
-                    <span className="text-[10px] text-gray-400 block mb-4">Compromisos Familiares</span>
-                    <div className="space-y-1">
-                      {familyCommitments.length === 0 ? (
-                        <p className="text-[10px] text-gray-400 italic">No hay compromisos definidos.</p>
-                      ) : (
-                        familyCommitments.map((commitment) => {
-                          const evaluation = familyEvaluations.find(e => e.studentId === auditingStudent.id && e.commitmentId === commitment.id.toString());
-                          const grade = evaluation?.grade || '';
-
-                          return (
-                            <div key={commitment.id} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                              <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.description}>{commitment.description}</span>
-                              <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
-                                grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                  grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
-                                    grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                      'bg-red-50 text-red-700 border-red-100'
-                                }`}>
-                                {grade || '-'}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                {/* TARJETA DE TUTORÍA */}
+                <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                  <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">TUTORÍA</h4>
+                  <span className="text-[10px] text-gray-400 block mb-4">Evaluación del Tutor</span>
+                  <div className="space-y-1">
+                    {(() => {
+                      const tutorEntry = tutorData.find(t => String(t.studentId) === String(auditingStudent.id)) || { comportamiento: '', tutoriaValores: '' };
+                      return [
+                        { label: 'COMPORTAMIENTO', grade: tutorEntry.comportamiento },
+                        { label: 'TUTORÍA DE VALORES', grade: tutorEntry.tutoriaValores }
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                          <span className="text-[10px] text-gray-600 font-bold">{item.label}</span>
+                          <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!item.grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
+                            item.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                              item.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                item.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                  'bg-red-50 text-red-700 border-red-100'
+                            }`}>
+                            {item.grade || '-'}
+                          </div>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
-              )}
+
+                {/* TARJETA DE PADRES DE FAMILIA */}
+                <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                  <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">PADRES DE FAMILIA</h4>
+                  <span className="text-[10px] text-gray-400 block mb-4">Compromisos Familiares</span>
+                  <div className="space-y-1">
+                    {familyCommitments.length === 0 ? (
+                      <p className="text-[10px] text-gray-400 italic">No hay compromisos definidos.</p>
+                    ) : (
+                      familyCommitments.map((commitment) => {
+                        const evaluation = familyEvaluations.find(e => String(e.studentId) === String(auditingStudent.id) && String(e.commitmentId) === String(commitment.id));
+                        const grade = evaluation?.grade || '';
+
+                        return (
+                          <div key={commitment.id} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                            <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.description}>{commitment.description}</span>
+                            <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
+                              grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                  grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                    'bg-red-50 text-red-700 border-red-100'
+                              }`}>
+                              {grade || '-'}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
