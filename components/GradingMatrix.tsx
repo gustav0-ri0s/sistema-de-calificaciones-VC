@@ -633,14 +633,14 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
             isApproved={false}
             isSent={true}
             onClose={() => setActiveConclusionData(null)}
-            onSave={(val) => {
+            onSave={(val, shouldSend) => {
               onUpdateGrade(
                 activeConclusionData.student.id,
                 activeConclusionData.competencyId,
                 activeConclusionData.grade,
                 val
               );
-              setActiveConclusionData(null);
+              if (shouldSend) setActiveConclusionData(null);
             }}
             isLocked={bimestre.isLocked}
             title="Conclusiones Descriptivas"
@@ -657,7 +657,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
             onClose={() => setActiveCommentStudent(null)}
             onSave={(val, shouldSend) => {
               onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
-              setActiveCommentStudent(null);
+              if (shouldSend) setActiveCommentStudent(null);
             }}
             isLocked={bimestre.isLocked}
             title="Apreciación Académica"

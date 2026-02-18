@@ -208,7 +208,7 @@ const AppreciationsReview: React.FC<AppreciationsReviewProps> = ({
                     onClose={() => setActiveCommentStudent(null)}
                     onSave={(val, shouldSend) => {
                         onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
-                        setActiveCommentStudent(null);
+                        if (shouldSend) setActiveCommentStudent(null);
                         // Optimistic
                         setAppreciationsList(prev => prev.map(p => p.studentId === activeCommentStudent.id ? { ...p, comment: val } : p));
                     }}

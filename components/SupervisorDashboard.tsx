@@ -656,7 +656,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           onClose={() => setActiveCommentStudent(null)}
           onSave={(val, shouldSend) => {
             onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
-            setActiveCommentStudent(null);
+            if (shouldSend) setActiveCommentStudent(null);
           }}
           isLocked={bimestre.isLocked}
         />
