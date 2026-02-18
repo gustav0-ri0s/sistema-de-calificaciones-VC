@@ -111,11 +111,11 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
   const getGradeColorClass = (grade: GradeLevel) => {
     switch (grade) {
-      case 'AD': return 'text-[#1E40AF] font-black bg-blue-50 ring-1 ring-blue-200';
-      case 'A': return 'text-[#047857] font-black bg-emerald-50 ring-1 ring-emerald-200';
-      case 'B': return 'text-[#B45309] font-black bg-amber-50 ring-1 ring-amber-200';
-      case 'C': return 'text-[#B91C1C] font-black bg-red-50 ring-1 ring-red-200';
-      default: return 'text-gray-300 bg-gray-50/30 ring-1 ring-gray-100';
+      case 'AD': return 'text-blue-800 font-black bg-blue-100 ring-1 ring-blue-300';
+      case 'A': return 'text-emerald-800 font-black bg-emerald-100 ring-1 ring-emerald-300';
+      case 'B': return 'text-amber-800 font-black bg-amber-100 ring-1 ring-amber-300';
+      case 'C': return 'text-red-800 font-black bg-red-100 ring-1 ring-red-300';
+      default: return 'text-slate-400 font-bold bg-slate-50 ring-1 ring-slate-200';
     }
   };
 
@@ -214,11 +214,11 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                             onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
                             className={`flex-1 p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(grade)}`}
                           >
-                            <option value="">Nota</option>
-                            <option value="AD">AD</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
+                            <option value="" style={{ color: '#94a3b8' }}>Nota</option>
+                            <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
+                            <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
+                            <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
+                            <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
                           </select>
 
                           {grade && (
@@ -254,11 +254,11 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                           onChange={(e) => onUpdateTutorData(student.id, 'comportamiento', e.target.value as GradeLevel)}
                           className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.comportamiento)}`}
                         >
-                          <option value="">-</option>
-                          <option value="AD">AD</option>
-                          <option value="A">A</option>
-                          <option value="B">B</option>
-                          <option value="C">C</option>
+                          <option value="" style={{ color: '#94a3b8' }}>-</option>
+                          <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
+                          <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
+                          <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
+                          <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
                         </select>
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -269,11 +269,11 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                           onChange={(e) => onUpdateTutorData(student.id, 'tutoriaValores', e.target.value as GradeLevel)}
                           className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(tData.tutoriaValores)}`}
                         >
-                          <option value="">-</option>
-                          <option value="AD">AD</option>
-                          <option value="A">A</option>
-                          <option value="B">B</option>
-                          <option value="C">C</option>
+                          <option value="" style={{ color: '#94a3b8' }}>-</option>
+                          <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
+                          <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
+                          <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
+                          <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
                         </select>
                       </div>
                     </div>
@@ -394,11 +394,11 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                               onChange={(e) => onUpdateFamilyEvaluation(student.id, fc.id, e.target.value as GradeLevel)}
                               className={`w-full p-4 rounded-2xl border-none font-black text-sm text-center ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                             >
-                              <option value="">-</option>
-                              <option value="AD">AD</option>
-                              <option value="A">A</option>
-                              <option value="B">B</option>
-                              <option value="C">C</option>
+                              <option value="" style={{ color: '#94a3b8' }}>-</option>
+                              <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
+                              <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
+                              <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
+                              <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
                             </select>
                           </td>
                         );
@@ -420,11 +420,11 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                                 className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md'
                                   }`}
                               >
-                                <option value="">-</option>
-                                <option value="AD">AD</option>
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
+                                <option value="" style={{ color: '#94a3b8' }}>-</option>
+                                <option value="AD" style={{ color: '#1e40af', fontWeight: '900' }}>AD</option>
+                                <option value="A" style={{ color: '#065f46', fontWeight: '900' }}>A</option>
+                                <option value="B" style={{ color: '#92400e', fontWeight: '900' }}>B</option>
+                                <option value="C" style={{ color: '#b91c1c', fontWeight: '900' }}>C</option>
                               </select>
 
                               {grade && (
