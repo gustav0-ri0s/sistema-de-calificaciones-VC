@@ -30,6 +30,24 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onLogout, tutorSections = [] })
             show: isDocente
         },
         {
+            to: '/monitoreo',
+            label: 'Monitoreo',
+            icon: <BookOpen size={20} />,
+            show: isStaff
+        },
+        {
+            to: '/apreciaciones',
+            label: 'Apreciaciones',
+            icon: <Heart size={20} />,
+            show: isStaff
+        },
+        {
+            to: '/reportes',
+            label: 'Reportes',
+            icon: <UserCheck size={20} />,
+            show: isStaff
+        },
+        {
             to: firstTutorSection ? `/tutoria/${firstTutorSection.classroomId}` : '#',
             label: 'Tutoría',
             icon: <UserCheck size={20} />,

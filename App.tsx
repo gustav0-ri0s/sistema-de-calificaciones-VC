@@ -4,7 +4,10 @@ import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, 
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, UserRole, FamilyCommitment, FamilyEvaluation, Student } from './types';
 import CourseCard from './components/CourseCard';
 import GradingMatrix from './components/GradingMatrix';
-import SupervisorDashboard from './components/SupervisorDashboard';
+import SupervisorStatsDashboard from './components/SupervisorStatsDashboard';
+import AcademicMonitoring from './components/AcademicMonitoring';
+import AppreciationsReview from './components/AppreciationsReview';
+import ReportsModule from './components/ReportsModule';
 import { supabase } from './lib/supabase';
 import AuthCallback from './components/AuthCallback';
 import RequireAuth from './components/RequireAuth';
@@ -753,19 +756,8 @@ const App: React.FC = () => {
                       element={
                         isStaff ? (
                           selectedBimestre && (
-                            <SupervisorDashboard
-                              role={currentUserRole}
+                            <SupervisorStatsDashboard
                               bimestre={selectedBimestre}
-                              allBimestres={bimestres}
-                              onBimestreChange={(b) => setSelectedBimestre(b)}
-                              grades={grades}
-                              appreciations={appreciations}
-                              tutorData={tutorData}
-                              onApproveAppreciation={approveAppreciation}
-                              onUpdateAppreciation={updateAppreciation}
-                              familyCommitments={familyCommitments}
-                              familyEvaluations={familyEvaluations}
-                              onUpdateGrade={updateGrade}
                             />
                           )
                         ) : (
@@ -777,6 +769,51 @@ const App: React.FC = () => {
                             progressStats={progressStats}
                           />
                         )
+                      }
+                    />
+
+                    <Route
+                      path="/monitoreo"
+                      element={
+                        isStaff && selectedBimestre ? (
+                          <AcademicMonitoring
+                            role={currentUserRole}
+                            bimestre={selectedBimestre}
+                            allBimestres={bimestres}
+                            onBimestreChange={(b) => setSelectedBimestre(b)}
+                            grades={grades}
+                            appreciations={appreciations}
+                            tutorData={tutorData}
+                            familyCommitments={familyCommitments}
+                            familyEvaluations={familyEvaluations}
+                            onApproveAppreciation={approveAppreciation}
+                            onUpdateAppreciation={updateAppreciation}
+                            onUpdateGrade={updateGrade}
+                          />
+                        ) : <Navigate to="/" />
+                      }
+                    />
+
+                    <Route
+                      path="/apreciaciones"
+                      element={
+                        isStaff && selectedBimestre ? (
+                          <AppreciationsReview
+                            role={currentUserRole}
+                            bimestre={selectedBimestre}
+                            allBimestres={bimestres}
+                            onBimestreChange={(b) => setSelectedBimestre(b)}
+                            onApproveAppreciation={approveAppreciation}
+                            onUpdateAppreciation={updateAppreciation}
+                          />
+                        ) : <Navigate to="/" />
+                      }
+                    />
+
+                    <Route
+                      path="/reportes"
+                      element={
+                        isStaff ? <ReportsModule /> : <Navigate to="/" />
                       }
                     />
 
