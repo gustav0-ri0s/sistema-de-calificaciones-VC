@@ -80,17 +80,8 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     }
 
     const currentConclusion = getGradeConclusion(student.id, competencyId);
-
-    if (isConclusionMandatory(grade) && !currentConclusion) {
-      setActiveConclusionData({
-        student,
-        competencyId,
-        grade,
-        conclusion: currentConclusion
-      });
-    } else {
-      onUpdateGrade(student.id, competencyId, grade, currentConclusion);
-    }
+    // Auto-popup removed as per request. Visual indicator handles the "Mandatory" status.
+    onUpdateGrade(student.id, competencyId, grade, currentConclusion);
   };
 
   const getFamilyGrade = (studentId: string, fcId: string) => {
@@ -148,21 +139,27 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     filterValue: string,
     text: string
   ) => {
-    students.forEach(student => {
-      const entry = grades.find(g => g.studentId === student.id && g.competencyId === competencyId);
-      const currentGrade = entry?.grade;
-      const currentConclusion = entry?.descriptiveConclusion || '';
+    const targetCompetencies = competencyId === 'ALL'
+      ? course.competencies
+      : course.competencies.filter(c => c.id === competencyId);
 
-      if (!currentGrade) return; // Only update if there is a grade
+    targetCompetencies.forEach(comp => {
+      students.forEach(student => {
+        const entry = grades.find(g => g.studentId === student.id && g.competencyId === comp.id);
+        const currentGrade = entry?.grade;
+        const currentConclusion = entry?.descriptiveConclusion || '';
 
-      let shouldUpdate = false;
-      if (filterType === 'all_with_grade') shouldUpdate = true;
-      if (filterType === 'specific_grade') shouldUpdate = currentGrade === filterValue;
-      if (filterType === 'empty_conclusion') shouldUpdate = !currentConclusion || currentConclusion.trim() === '';
+        if (!currentGrade) return; // Only update if there is a grade
 
-      if (shouldUpdate) {
-        onUpdateGrade(student.id, competencyId, currentGrade, text);
-      }
+        let shouldUpdate = false;
+        if (filterType === 'all_with_grade') shouldUpdate = true;
+        if (filterType === 'specific_grade') shouldUpdate = currentGrade === filterValue;
+        if (filterType === 'empty_conclusion') shouldUpdate = !currentConclusion || currentConclusion.trim() === '';
+
+        if (shouldUpdate) {
+          onUpdateGrade(student.id, comp.id, currentGrade, text);
+        }
+      });
     });
     setShowMassiveConclusionModal(false);
   };

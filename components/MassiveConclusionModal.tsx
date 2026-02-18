@@ -33,20 +33,30 @@ const MassiveConclusionModal: React.FC<MassiveConclusionModalProps> = ({
     const affectedStudentsCount = useMemo(() => {
         if (!selectedCompetencyId) return 0;
 
-        return students.filter(student => {
-            const entry = grades.find(g => g.studentId === student.id && g.competencyId === selectedCompetencyId);
-            const grade = entry?.grade || '';
-            const conclusion = entry?.descriptiveConclusion || '';
+        let count = 0;
+        const targetCompetencies = selectedCompetencyId === 'ALL'
+            ? course.competencies
+            : course.competencies.filter(c => c.id === selectedCompetencyId);
 
-            if (!grade) return false; // Must have a grade to have a conclusion
+        targetCompetencies.forEach(comp => {
+            students.forEach(student => {
+                const entry = grades.find(g => g.studentId === student.id && g.competencyId === comp.id);
+                const grade = entry?.grade || '';
+                const conclusion = entry?.descriptiveConclusion || '';
 
-            if (filterType === 'all_with_grade') return true;
-            if (filterType === 'specific_grade') return grade === filterValue;
-            if (filterType === 'empty_conclusion') return !conclusion || conclusion.trim() === '';
+                if (!grade) return; // Must have a grade to have a conclusion
 
-            return false;
-        }).length;
-    }, [students, grades, selectedCompetencyId, filterType, filterValue]);
+                let shouldCount = false;
+                if (filterType === 'all_with_grade') shouldCount = true;
+                if (filterType === 'specific_grade') shouldCount = grade === filterValue;
+                if (filterType === 'empty_conclusion') shouldCount = !conclusion || conclusion.trim() === '';
+
+                if (shouldCount) count++;
+            });
+        });
+
+        return count;
+    }, [students, grades, selectedCompetencyId, filterType, filterValue, course.competencies]);
 
     const handleSave = () => {
         if (isLocked) return;
@@ -111,6 +121,7 @@ const MassiveConclusionModal: React.FC<MassiveConclusionModalProps> = ({
                                 onChange={(e) => setSelectedCompetencyId(e.target.value)}
                                 className="w-full p-3 rounded-xl bg-gray-50 border border-gray-200 font-bold text-sm text-gray-700 outline-none focus:ring-2 focus:ring-institutional/20 transition-all"
                             >
+                                <option value="ALL" className="font-black text-institutional">✨ Todas las competencias</option>
                                 {course.competencies.map(comp => (
                                     <option key={comp.id} value={comp.id}>{comp.name}</option>
                                 ))}
