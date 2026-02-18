@@ -895,17 +895,16 @@ const CourseRouteWrapper = ({
   updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
 }: any) => {
   const { id } = useParams<{ id: string }>();
-
-  const course = selectedCourse || academicLoad.find((c: any) => c.id === id);
+  const course = academicLoad.find((c: any) => c.id === id);
 
   useEffect(() => {
     if (course && selectedBimestre) {
       fetchStudents(course.classroomId);
       fetchGrades(course.classroomId, selectedBimestre.id, course.id);
-      if (!selectedCourse) setSelectedCourse(course);
+      setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [course, selectedBimestre, selectedCourse]);
+  }, [id, selectedBimestre, academicLoad]);
 
   if (loadingCourses) return (
     <div className="flex items-center justify-center h-64">
@@ -970,17 +969,16 @@ const TutorRouteWrapper = ({
   updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
 }: any) => {
   const { classroomId } = useParams<{ classroomId: string }>();
-
-  const course = selectedCourse || academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
+  const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
   useEffect(() => {
     if (course && selectedBimestre) {
       fetchStudents(course.classroomId);
       fetchGrades(course.classroomId, selectedBimestre.id, course.id);
-      if (!selectedCourse) setSelectedCourse(course);
+      setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [course, selectedBimestre, selectedCourse]);
+  }, [classroomId, selectedBimestre, academicLoad]);
 
   if (loadingCourses) return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -1045,17 +1043,16 @@ const FamilyRouteWrapper = ({
   updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
 }: any) => {
   const { classroomId } = useParams<{ classroomId: string }>();
-
-  const course = selectedCourse || academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
+  const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
   useEffect(() => {
     if (course && selectedBimestre) {
       fetchStudents(course.classroomId);
       fetchGrades(course.classroomId, selectedBimestre.id, course.id);
-      if (!selectedCourse) setSelectedCourse(course);
+      setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [course, selectedBimestre, selectedCourse]);
+  }, [classroomId, selectedBimestre, academicLoad]);
 
   if (loadingCourses) return (
     <div className="flex items-center justify-center min-h-[400px]">
