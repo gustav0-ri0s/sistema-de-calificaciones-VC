@@ -142,6 +142,30 @@ const App: React.FC = () => {
     }
   };
 
+  const [progressStats, setProgressStats] = useState<any>(null); // New State
+
+  const fetchProgressStats = async () => {
+    if (!selectedBimestre || !userId || currentUserRole !== 'Docente') {
+      return;
+    }
+    // console.log('Fetching stats for', userId, selectedBimestre.id);
+    try {
+      const { data, error } = await supabase.rpc('get_teacher_completion_stats', {
+        p_teacher_id: userId,
+        p_bimestre_id: parseInt(selectedBimestre.id)
+      });
+      if (error) throw error;
+      setProgressStats(data);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProgressStats();
+  }, [userId, selectedBimestre, currentUserRole]);
+
+
   const fetchFamilyCommitments = async () => {
     try {
       const { data, error } = await supabase
@@ -742,6 +766,7 @@ const App: React.FC = () => {
                             tutorSections={tutorSections}
                             selectedBimestre={selectedBimestre}
                             userName={userName}
+                            progressStats={progressStats}
                           />
                         )
                       }

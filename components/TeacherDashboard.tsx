@@ -19,13 +19,15 @@ interface TeacherDashboardProps {
     tutorSections: AcademicLoad[];
     selectedBimestre: Bimestre | null;
     userName: string;
+    progressStats: any; // Using any for simplicity as structure is dynamic jsonb
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     academicLoad,
     tutorSections,
     selectedBimestre,
-    userName
+    userName,
+    progressStats
 }) => {
 
     const stats = useMemo(() => {
@@ -33,9 +35,37 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             totalCourses: academicLoad.length,
             totalStudents: academicLoad.length > 0 ? 30 : 0, // In a real app we'd sum unique students
             tutorCount: tutorSections.length,
-            isBimestreOpen: !selectedBimestre?.isLocked
+            isBimestreOpen: !selectedBimestre?.isLocked,
+            progressStats
         };
-    }, [academicLoad, tutorSections, selectedBimestre]);
+    }, [academicLoad, tutorSections, selectedBimestre, progressStats]);
+
+    const progress = useMemo(() => {
+        if (!stats.progressStats) return 0;
+
+        const { course_stats, tutor_stats } = stats.progressStats;
+
+        // Calculate totals
+        const totalNeeded =
+            (course_stats?.total_needed || 0) +
+            (tutor_stats?.behavior_needed || 0) +
+            (tutor_stats?.family_needed || 0) +
+            (tutor_stats?.appreciations_needed || 0);
+
+        if (totalNeeded === 0) return 0;
+
+        const totalFilled =
+            (course_stats?.total_filled || 0) +
+            (tutor_stats?.behavior_filled || 0) +
+            (tutor_stats?.family_filled || 0) +
+            (tutor_stats?.appreciations_approved || 0);
+
+        // Check for blockers
+        // If there are missing mandatory conclusions, we might want to cap the progress or show a warning.
+        // For now, simple percentage logic.
+
+        return Math.round((totalFilled / totalNeeded) * 100);
+    }, [stats.progressStats]);
 
     return (
         <div className="max-w-6xl mx-auto animate-in fade-in duration-700">
@@ -81,22 +111,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
-                    <div className="flex items-center gap-5 mb-6">
-                        <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-inner">
-                            {stats.isBimestreOpen ? <ClipboardList size={28} /> : <AlertCircle size={28} />}
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-emerald-500/5 transition-all relative overflow-hidden">
+                    <div className="flex items-center gap-5 mb-6 relative z-10">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-inner ${progress === 100 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-50 text-slate-400'
+                            }`}>
+                            {progress === 100 ? <CheckCircle2 size={28} /> : <ClipboardList size={28} />}
                         </div>
                         <div>
-                            <p className={`text-2xl font-black leading-none ${stats.isBimestreOpen ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                {stats.isBimestreOpen ? 'Bimestre Abierto' : 'Bimestre Cerrado'}
+                            <p className={`text-3xl font-black leading-none ${progress === 100 ? 'text-emerald-600' : 'text-slate-800'}`}>
+                                {progress}%
                             </p>
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Estado de Llenado</p>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Avance Bimestral</p>
                         </div>
                     </div>
-                    <div className={`py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 ${stats.isBimestreOpen ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
-                        }`}>
-                        {stats.isBimestreOpen ? 'Ya puedes registrar notas' : 'Solo consulta disponible'}
+
+                    <div className="w-full bg-slate-100 rounded-full h-3 mb-4 overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${progress === 100 ? 'bg-emerald-500' : 'bg-institutional'
+                                }`}
+                            style={{ width: `${progress}%` }}
+                        ></div>
                     </div>
+
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <span>{stats.isBimestreOpen ? 'En Progreso' : 'Cerrado'}</span>
+                        {stats.progressStats?.course_stats?.missing_conclusions > 0 && (
+                            <span className="text-red-500 flex items-center gap-1">
+                                <AlertCircle size={10} />
+                                Faltan Conclusiones
+                            </span>
+                        )}
+                    </div>
+
+                    {progress === 100 && (
+                        <div className="absolute top-0 right-0 p-8 opacity-5">
+                            <CheckCircle2 size={120} />
+                        </div>
+                    )}
                 </div>
             </div>
 
