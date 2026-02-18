@@ -379,9 +379,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                 <button
                   key={b.id}
                   onClick={() => {
-                    if (!b.isLocked) {
-                      onBimestreChange(b);
-                    }
+                    onBimestreChange(b);
                   }}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${bimestre.id === b.id
                     ? 'bg-institutional text-white shadow-md'
@@ -775,7 +773,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
           <div className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 duration-200">
             <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
               <ShieldCheck className="text-institutional" size={24} />
-              Modificar Calificación
+              {bimestre.isLocked ? 'Detalle de Calificación' : 'Modificar Calificación'}
             </h3>
 
             <div className="space-y-6">
@@ -790,11 +788,12 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                   {['', 'AD', 'A', 'B', 'C'].map((g) => (
                     <button
                       key={g}
+                      disabled={bimestre.isLocked}
                       onClick={() => setEditingGradeData({ ...editingGradeData, grade: g as GradeLevel })}
                       className={`py-3 rounded-xl text-xs font-black transition-all border-2 ${editingGradeData.grade === g
                         ? 'bg-institutional border-institutional text-white'
                         : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                        }`}
+                        } ${bimestre.isLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     >
                       {g === '' ? '-' : g}
                     </button>
@@ -806,9 +805,10 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                 <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Conclusión Descriptiva</label>
                 <textarea
                   value={editingGradeData.conclusion}
+                  disabled={bimestre.isLocked}
                   onChange={(e) => setEditingGradeData({ ...editingGradeData, conclusion: e.target.value })}
-                  placeholder="Ingrese la conclusión descriptiva aquí..."
-                  className="w-full h-32 p-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-4 focus:ring-institutional/10 transition-all resize-none"
+                  placeholder={bimestre.isLocked ? "Sin conclusión descriptiva" : "Ingrese la conclusión descriptiva aquí..."}
+                  className={`w-full h-32 p-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-4 focus:ring-institutional/10 transition-all resize-none ${bimestre.isLocked ? 'cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -817,58 +817,58 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                   onClick={() => setEditingGradeData(null)}
                   className="flex-1 py-4 rounded-2xl text-xs font-black uppercase text-slate-400 hover:bg-slate-50 transition-all border-2 border-transparent"
                 >
-                  Cancelar
+                  {bimestre.isLocked ? 'Cerrar' : 'Cancelar'}
                 </button>
-                <button
-                  onClick={async () => {
-                    // Start loading for immediate feedback if needed
-                    const studentId = editingGradeData.student.id;
-                    const compId = editingGradeData.competencyId;
-                    const gradeVal = editingGradeData.grade;
-                    const concVal = editingGradeData.conclusion;
+                {!bimestre.isLocked && (
+                  <button
+                    onClick={async () => {
+                      // Start loading for immediate feedback if needed
+                      const studentId = editingGradeData.student.id;
+                      const compId = editingGradeData.competencyId;
+                      const gradeVal = editingGradeData.grade;
+                      const concVal = editingGradeData.conclusion;
 
-                    // Save to DB
-                    await onUpdateGrade(
-                      studentId,
-                      compId,
-                      gradeVal,
-                      concVal
-                    );
+                      // Save to DB
+                      await onUpdateGrade(
+                        studentId,
+                        compId,
+                        gradeVal,
+                        concVal
+                      );
 
-                    // Update local state for immediate visual consistency in detailed view
-                    setSectionGrades(prev => {
-                      const compIdStr = compId.toString();
-                      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
-                      if (gradeVal === '') return filtered;
+                      // Update local state for immediate visual consistency in detailed view
+                      setSectionGrades(prev => {
+                        const compIdStr = compId.toString();
+                        const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
+                        if (gradeVal === '') return filtered;
 
-                      return [...filtered, {
-                        studentId: studentId,
-                        competencyId: compIdStr,
-                        courseId: '',
-                        grade: gradeVal,
-                        descriptiveConclusion: concVal
-                      }];
-                    });
+                        return [...filtered, {
+                          studentId: studentId,
+                          competencyId: compIdStr,
+                          courseId: '',
+                          grade: gradeVal,
+                          descriptiveConclusion: concVal
+                        }];
+                      });
 
-                    // Recalculate global stats for this section (Optimistic)
-                    setSectionsData(prev => prev.map(s => {
-                      if (s.id === selectedSectionId) {
-                        // This is a rough estimation, for precise count we'd need more logic
-                        // but setting refreshTrigger is better
+                      // Recalculate global stats for this section (Optimistic)
+                      setSectionsData(prev => prev.map(s => {
+                        if (s.id === selectedSectionId) {
+                          return s;
+                        }
                         return s;
-                      }
-                      return s;
-                    }));
+                      }));
 
-                    // Trigger a real refresh of stats
-                    setRefreshTrigger(prev => prev + 1);
+                      // Trigger a real refresh of stats
+                      setRefreshTrigger(prev => prev + 1);
 
-                    setEditingGradeData(null);
-                  }}
-                  className="flex-1 py-4 bg-institutional text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-institutional/20 hover:brightness-110 active:scale-95 transition-all"
-                >
-                  Guardar Cambios
-                </button>
+                      setEditingGradeData(null);
+                    }}
+                    className="flex-1 py-4 bg-institutional text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-institutional/20 hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    Guardar Cambios
+                  </button>
+                )}
               </div>
             </div>
           </div>
