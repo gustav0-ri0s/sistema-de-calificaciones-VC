@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams, Link } from 'react-router-dom';
-import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, Home, Heart, Loader2, Plus } from 'lucide-react';
+import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, Home, Heart, Loader2, Plus, Menu } from 'lucide-react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, UserRole, FamilyCommitment, FamilyEvaluation, Student } from './types';
 import CourseCard from './components/CourseCard';
 import GradingMatrix from './components/GradingMatrix';
@@ -433,507 +433,710 @@ const App: React.FC = () => {
     // We need to deduplicate by classroomId if multiple courses in same tutor section
     const unique = new Map();
     academicLoad.forEach(load => {
-      import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, Home, Heart, Loader2, Plus, Menu } from 'lucide-react';
-      // ... (imports)
+      if (load.isTutor && !unique.has(load.classroomId)) {
+        unique.set(load.classroomId, load);
+      }
+    });
+    return Array.from(unique.values());
+  }, [academicLoad]);
 
-      const App: React.FC = () => {
-        const navigate = useNavigate();
-        const location = useLocation();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    // window.location.href = PORTAL_URL; // let auth listener handle it
+  };
 
-        const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-        // ... (existing states)
+  const handleCourseSelect = async (course: AcademicLoad) => {
+    setSelectedCourse(course);
+    navigate(`/curso/${course.id}`);
+  };
 
-        // ... (useEffect for Auth)
+  const handleBackToCourses = () => {
+    setSelectedCourse(null);
+    setStudents([]);
+    navigate('/mis-cursos');
+  };
 
-        // ... (useEffect for data fetching)
+  const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => {
+    if (!selectedBimestre || selectedBimestre.isLocked) return;
 
-        // Close sidebar on route change
-        useEffect(() => {
-          setIsSidebarOpen(false);
-        }, [location.pathname]);
+    const compIdStr = competencyId.toString();
 
-        // ... (rest of logic)
+    // Optimistic Update
+    setGrades(prev => {
+      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
+      if (grade === '') return filtered;
+      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId: compIdStr, grade, descriptiveConclusion }];
+    });
 
-        return (
-          <Routes>
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route
-              path="*"
-              element={
-                <RequireAuth allowedRoles={ALLOWED_ROLES}>
-                  <div className="min-h-screen bg-gray-50 flex flex-col text-sm md:text-base">
-                    <header className="bg-white border-b sticky top-0 z-[100] shadow-sm">
-                      <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 -ml-2 text-gray-400 lg:hidden hover:bg-gray-100 rounded-lg"
-                          >
-                            <Menu size={24} />
-                          </button>
+    try {
+      if (grade === '') {
+        const { error } = await supabase
+          .from('student_grades')
+          .delete()
+          .match({
+            student_id: studentId,
+            competency_id: parseInt(compIdStr),
+            bimestre_id: parseInt(selectedBimestre.id)
+          });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('student_grades').upsert({
+          student_id: studentId,
+          competency_id: parseInt(compIdStr),
+          bimestre_id: parseInt(selectedBimestre.id),
+          grade: grade,
+          descriptive_conclusion: descriptiveConclusion,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, competency_id, bimestre_id' });
 
-                          <div className="w-10 h-10 md:w-11 md:h-11 bg-institutional rounded-xl flex items-center justify-center text-white shadow-lg shadow-institutional/20">
-                            <ClipboardCheck size={24} />
-                          </div>
-                          <div>
-                            <h1 className="font-bold text-sm md:text-lg text-gray-800 leading-none mb-1">IEP Valores y Ciencias</h1>
-                            <p className="text-[9px] md:text-[10px] text-gray-400 font-bold tracking-wider uppercase">Panel {isStaff ? 'Institucional' : 'Docente'}</p>
-                          </div>
-                        </div>
+        if (error) throw error;
+      }
 
-                        <div className="flex items-center gap-6">
-                          {/* Global Bimestre Selector for Staff and Teachers alike */}
-                          <div className="hidden lg:flex items-center gap-1 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100 shadow-inner">
-                            {loadingBimestres ? (
-                              <div className="px-6 py-2"><Loader2 size={16} className="animate-spin text-institutional/30" /></div>
-                            ) : (
-                              bimestres.map((b) => (
-                                <button
-                                  key={b.id}
-                                  onClick={() => {
-                                    if (!b.isLocked) setSelectedBimestre(b);
-                                  }}
-                                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
-                                    ? 'bg-institutional text-white shadow-lg shadow-institutional/20 scale-105'
-                                    : b.isLocked
-                                      ? 'text-gray-300 bg-transparent cursor-not-allowed opacity-50'
-                                      : 'text-gray-400 hover:bg-white hover:shadow-sm'
-                                    }`}
-                                >
-                                  {b.shortLabel || b.label} {b.isLocked && <Lock size={12} />}
-                                </button>
-                              ))
-                            )}
-                          </div>
+      fetchProgressStats();
 
-                          <div className="hidden sm:flex flex-col items-end">
-                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Usuario Activo</span>
-                            <div className="flex items-center gap-3">
-                              <div className="text-right">
-                                <p className="text-sm font-black text-gray-900 leading-none">Bienvenido, {userName}</p>
-                                <p className="text-[9px] font-black uppercase text-institutional tracking-widest mt-1">{currentUserRole}</p>
-                              </div>
-                              <div className="w-9 h-9 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                                <UserCircle size={22} />
-                              </div>
-                            </div>
-                          </div>
-                          <button onClick={handleLogout} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all active:scale-90 border border-transparent hover:border-red-100">
-                            <LogOut size={20} />
-                          </button>
-                        </div>
-                      </div>
-                    </header>
+    } catch (err: any) {
+      console.error('Error saving grade:', err);
+    }
+  };
 
-                    <div className="flex-1 flex max-w-[1600px] mx-auto w-full relative">
-                      <Sidebar
-                        role={currentUserRole}
-                        onLogout={handleLogout}
-                        tutorSections={tutorSections}
-                        isOpen={isSidebarOpen}
-                        onClose={() => setIsSidebarOpen(false)}
-                      />
+  const updateFamilyEvaluation = (studentId: string, commitmentId: string, grade: GradeLevel) => {
+    if (selectedBimestre?.isLocked) return;
+    setFamilyEvaluations(prev => {
+      const filtered = prev.filter(e => !(e.studentId === studentId && e.commitmentId === commitmentId));
+      if (grade === '') return filtered;
+      return [...filtered, { studentId, commitmentId, grade }];
+    });
 
-                      <main className="flex-1 px-4 py-8 overflow-y-auto">
-                        <Routes>
-                          <Route
-                            path="/"
-                            element={
-                              isStaff ? (
-                                selectedBimestre && (
-                                  <SupervisorStatsDashboard
-                                    bimestre={selectedBimestre}
-                                  />
-                                )
-                              ) : (
-                                <TeacherDashboard
-                                  academicLoad={academicLoad}
-                                  tutorSections={tutorSections}
-                                  selectedBimestre={selectedBimestre}
-                                  userName={userName}
-                                  progressStats={progressStats}
-                                />
-                              )
-                            }
-                          />
+    if (!selectedBimestre) return;
 
-                          <Route
-                            path="/monitoreo"
-                            element={
-                              isStaff && selectedBimestre ? (
-                                <AcademicMonitoring
-                                  role={currentUserRole}
-                                  bimestre={selectedBimestre}
-                                  allBimestres={bimestres}
-                                  onBimestreChange={(b) => setSelectedBimestre(b)}
-                                  grades={grades}
-                                  appreciations={appreciations}
-                                  tutorData={tutorData}
-                                  familyCommitments={familyCommitments}
-                                  familyEvaluations={familyEvaluations}
-                                  onApproveAppreciation={approveAppreciation}
-                                  onUpdateAppreciation={updateAppreciation}
-                                  onUpdateGrade={updateGrade}
-                                />
-                              ) : <Navigate to="/" />
-                            }
-                          />
+    supabase.from('family_evaluations').upsert({
+      student_id: studentId,
+      commitment_id: parseInt(commitmentId),
+      bimestre_id: parseInt(selectedBimestre.id),
+      grade: grade,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'student_id, commitment_id, bimestre_id' }).then(({ error }) => {
+      if (error) {
+        console.error('Error saving family evaluation:', error);
+      } else {
+        fetchProgressStats();
+      }
+    });
+  };
 
-                          <Route
-                            path="/apreciaciones"
-                            element={
-                              isStaff && selectedBimestre ? (
-                                <AppreciationsReview
-                                  role={currentUserRole}
-                                  bimestre={selectedBimestre}
-                                  allBimestres={bimestres}
-                                  onBimestreChange={(b) => setSelectedBimestre(b)}
-                                  onApproveAppreciation={approveAppreciation}
-                                  onUpdateAppreciation={updateAppreciation}
-                                />
-                              ) : <Navigate to="/" />
-                            }
-                          />
+  const updateAppreciation = async (studentId: string, comment: string) => {
+    if (selectedBimestre?.isLocked) return;
 
-                          <Route
-                            path="/reportes"
-                            element={
-                              isStaff ? <ReportsModule /> : <Navigate to="/" />
-                            }
-                          />
+    const shouldResetApproval = currentUserRole === 'Docente';
 
-                          <Route
-                            path="/mis-cursos"
-                            element={
-                              <TeacherCourseList
-                                academicLoad={academicLoad}
-                                tutorSections={tutorSections}
-                                selectedBimestre={selectedBimestre}
-                              />
-                            }
-                          />
+    setAppreciations(prev => {
+      const existing = prev.find(a => a.studentId === studentId);
+      const filtered = prev.filter(a => a.studentId !== studentId);
+      return [...filtered, {
+        studentId,
+        comment,
+        isApproved: shouldResetApproval ? false : (existing ? existing.isApproved : false)
+      }];
+    });
 
-                          <Route
-                            path="/curso/:id"
-                            element={
-                              <CourseRouteWrapper
-                                selectedCourse={selectedCourse}
-                                setSelectedCourse={setSelectedCourse}
-                                academicLoad={academicLoad}
-                                fetchStudents={fetchStudents}
-                                fetchGrades={fetchGrades}
-                                loadingStudents={loadingStudents}
-                                selectedBimestre={selectedBimestre}
-                                currentUserRole={currentUserRole}
-                                students={students}
-                                grades={grades}
-                                appreciations={appreciations}
-                                tutorData={tutorData}
-                                familyCommitments={familyCommitments}
-                                familyEvaluations={familyEvaluations}
-                                updateGrade={updateGrade}
-                                updateAppreciation={updateAppreciation}
-                                approveAppreciation={approveAppreciation}
-                                updateTutorData={updateTutorData}
-                                updateFamilyEvaluation={updateFamilyEvaluation}
-                                handleBackToDashboard={handleBackToCourses}
-                                loadingCourses={loadingCourses}
-                              />
-                            }
-                          />
+    if (!selectedBimestre) return;
 
-                          <Route
-                            path="/tutoria/:classroomId"
-                            element={
-                              <TutorRouteWrapper
-                                selectedCourse={selectedCourse}
-                                setSelectedCourse={setSelectedCourse}
-                                academicLoad={academicLoad}
-                                fetchStudents={fetchStudents}
-                                fetchGrades={fetchGrades}
-                                loadingStudents={loadingStudents}
-                                selectedBimestre={selectedBimestre}
-                                currentUserRole={currentUserRole}
-                                students={students}
-                                grades={grades}
-                                appreciations={appreciations}
-                                tutorData={tutorData}
-                                familyCommitments={familyCommitments}
-                                familyEvaluations={familyEvaluations}
-                                updateGrade={updateGrade}
-                                updateAppreciation={updateAppreciation}
-                                approveAppreciation={approveAppreciation}
-                                updateTutorData={updateTutorData}
-                                updateFamilyEvaluation={updateFamilyEvaluation}
-                                handleBackToDashboard={handleBackToCourses}
-                                loadingCourses={loadingCourses}
-                              />
-                            }
-                          />
+    try {
+      const currentApp = appreciations.find(a => a.studentId === studentId);
+      const isApprovedState = shouldResetApproval ? false : (currentApp?.isApproved || false);
 
-                          <Route
-                            path="/familia/:classroomId"
-                            element={
-                              <FamilyRouteWrapper
-                                selectedCourse={selectedCourse}
-                                setSelectedCourse={setSelectedCourse}
-                                academicLoad={academicLoad}
-                                fetchStudents={fetchStudents}
-                                fetchGrades={fetchGrades}
-                                loadingStudents={loadingStudents}
-                                selectedBimestre={selectedBimestre}
-                                currentUserRole={currentUserRole}
-                                students={students}
-                                grades={grades}
-                                appreciations={appreciations}
-                                tutorData={tutorData}
-                                familyCommitments={familyCommitments}
-                                familyEvaluations={familyEvaluations}
-                                updateGrade={updateGrade}
-                                updateAppreciation={updateAppreciation}
-                                approveAppreciation={approveAppreciation}
-                                updateTutorData={updateTutorData}
-                                updateFamilyEvaluation={updateFamilyEvaluation}
-                                handleBackToDashboard={handleBackToCourses}
-                                loadingCourses={loadingCourses}
-                              />
-                            }
-                          />
+      await supabase
+        .from('student_appreciations')
+        .upsert({
+          student_id: studentId,
+          bimestre_id: parseInt(selectedBimestre.id),
+          comment: comment,
+          is_approved: isApprovedState,
+          tutor_id: userId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, bimestre_id' });
 
-                          {/* Redirección por defecto si la ruta no existe */}
-                          <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                      </main>
+      fetchProgressStats();
+
+    } catch (err) {
+      console.error('Error saving appreciation:', err);
+    }
+  };
+
+  const approveAppreciation = async (studentId: string) => {
+    if (currentUserRole !== 'Supervisor' && currentUserRole !== 'Administrador') return;
+
+    const currentApp = appreciations.find(a => a.studentId === studentId);
+    if (!currentApp) return;
+
+    const newStatus = !currentApp.isApproved;
+
+    setAppreciations(prev => {
+      return prev.map(a => a.studentId === studentId ? { ...a, isApproved: newStatus } : a);
+    });
+
+    if (!selectedBimestre) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_appreciations')
+        .update({ is_approved: newStatus, updated_at: new Date().toISOString() })
+        .eq('student_id', studentId)
+        .eq('bimestre_id', parseInt(selectedBimestre.id));
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error approving appreciation:', err);
+      setAppreciations(prev => prev.map(a => a.studentId === studentId ? { ...a, isApproved: !newStatus } : a));
+    }
+  };
+
+  const updateTutorData = async (studentId: string, field: 'comportamiento' | 'tutoriaValores', value: string) => {
+    if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
+
+    setTutorData(prev => {
+      const existing = prev.find(t => t.studentId === studentId) || { studentId, comportamiento: '' as GradeLevel, tutoriaValores: '' as GradeLevel };
+      const updated = { ...existing, [field]: value as GradeLevel };
+      const filtered = prev.filter(t => t.studentId !== studentId);
+      return [...filtered, updated];
+    });
+
+    if (!selectedBimestre) return;
+
+    try {
+      const currentTutor = tutorData.find(t => t.studentId === studentId) || { comportamiento: '', tutoriaValores: '' };
+      const behaviorGrade = field === 'comportamiento' ? value : currentTutor.comportamiento;
+      const valuesGrade = field === 'tutoriaValores' ? value : currentTutor.tutoriaValores;
+
+      const { error } = await supabase
+        .from('student_behavior_grades')
+        .upsert({
+          student_id: studentId,
+          bimestre_id: parseInt(selectedBimestre.id),
+          behavior_grade: behaviorGrade,
+          values_grade: valuesGrade,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, bimestre_id' });
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error updating tutor data:', err);
+    }
+  };
+
+
+
+  const userName = useMemo(() => {
+    const toTitleCase = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
+    if (!userFullName) return userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1);
+
+    if (userFullName.includes(',')) {
+      const [lastNames, firstNames] = userFullName.split(',').map(s => s.trim());
+      const firstName = firstNames.split(/\s+/)[0];
+      const firstLastName = lastNames.split(/\s+/)[0];
+      return `${toTitleCase(firstName)} ${toTitleCase(firstLastName)}`;
+    }
+
+    const parts = userFullName.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      const firstName = toTitleCase(parts[0]);
+      const firstLastName = toTitleCase(parts.length >= 4 ? parts[2] : parts[1]);
+      return `${firstName} ${firstLastName}`;
+    }
+    if (parts.length === 2) {
+      return `${toTitleCase(parts[0])} ${toTitleCase(parts[1])}`;
+    }
+    return toTitleCase(userFullName);
+  }, [userFullName, userEmail]);
+  const isStaff = currentUserRole === 'Supervisor' || currentUserRole === 'Administrador';
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route
+        path="*"
+        element={
+          <RequireAuth allowedRoles={ALLOWED_ROLES}>
+            <div className="min-h-screen bg-gray-50 flex flex-col text-sm md:text-base">
+              <header className="bg-white border-b sticky top-0 z-[100] shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setIsSidebarOpen(true)}
+                      className="p-2 -ml-2 text-gray-400 lg:hidden hover:bg-gray-100 rounded-lg"
+                    >
+                      <Menu size={24} />
+                    </button>
+
+                    <div className="w-10 h-10 md:w-11 md:h-11 bg-institutional rounded-xl flex items-center justify-center text-white shadow-lg shadow-institutional/20">
+                      <ClipboardCheck size={24} />
+                    </div>
+                    <div>
+                      <h1 className="font-bold text-sm md:text-lg text-gray-800 leading-none mb-1">IEP Valores y Ciencias</h1>
+                      <p className="text-[9px] md:text-[10px] text-gray-400 font-bold tracking-wider uppercase">Panel {isStaff ? 'Institucional' : 'Docente'}</p>
                     </div>
                   </div>
-                </RequireAuth>
-              }
-            />
-          </Routes>
-        );
-      };
 
-      // Helper components for Routes to avoid large inline code and handle initial student fetch
-      const CourseRouteWrapper = ({
-        selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
-        currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-        updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
-      }: any) => {
-        const { id } = useParams<{ id: string }>();
-        const course = academicLoad.find((c: any) => c.id === id);
+                  <div className="flex items-center gap-6">
+                    {/* Global Bimestre Selector for Staff and Teachers alike */}
+                    <div className="hidden lg:flex items-center gap-1 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100 shadow-inner">
+                      {loadingBimestres ? (
+                        <div className="px-6 py-2"><Loader2 size={16} className="animate-spin text-institutional/30" /></div>
+                      ) : (
+                        bimestres.map((b) => (
+                          <button
+                            key={b.id}
+                            onClick={() => {
+                              if (!b.isLocked) setSelectedBimestre(b);
+                            }}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${selectedBimestre?.id === b.id
+                              ? 'bg-institutional text-white shadow-lg shadow-institutional/20 scale-105'
+                              : b.isLocked
+                                ? 'text-gray-300 bg-transparent cursor-not-allowed opacity-50'
+                                : 'text-gray-400 hover:bg-white hover:shadow-sm'
+                              }`}
+                          >
+                            {b.shortLabel || b.label} {b.isLocked && <Lock size={12} />}
+                          </button>
+                        ))
+                      )}
+                    </div>
 
-        useEffect(() => {
-          if (course && selectedBimestre) {
-            fetchStudents(course.classroomId);
-            fetchGrades(course.classroomId, selectedBimestre.id, course.id);
-            setSelectedCourse(course);
-          }
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, [id, selectedBimestre, academicLoad]);
-
-        if (loadingCourses) return (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="animate-spin text-institutional" size={48} />
-          </div>
-        );
-
-        if (academicLoad.length > 0 && !course) {
-          console.warn("Course not found for ID:", id);
-          return <Navigate to="/" replace />;
-        }
-
-        if (!course) return null;
-
-        return (
-          <div>
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
-                  <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
-                </button>
-                <div className="min-w-0">
-                  <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
-                    {course.courseName}
-                  </h2>
-                  <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
+                    <div className="hidden sm:flex flex-col items-end">
+                      <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Usuario Activo</span>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-black text-gray-900 leading-none">Bienvenido, {userName}</p>
+                          <p className="text-[9px] font-black uppercase text-institutional tracking-widest mt-1">{currentUserRole}</p>
+                        </div>
+                        <div className="w-9 h-9 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                          <UserCircle size={22} />
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={handleLogout} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all active:scale-90 border border-red-100">
+                      <LogOut size={20} />
+                    </button>
+                  </div>
                 </div>
+              </header>
+
+              <div className="flex-1 flex max-w-[1600px] mx-auto w-full relative">
+                <Sidebar
+                  role={currentUserRole}
+                  onLogout={handleLogout}
+                  tutorSections={tutorSections}
+                  isOpen={isSidebarOpen}
+                  onClose={() => setIsSidebarOpen(false)}
+                />
+
+                <main className="flex-1 px-4 py-8 overflow-y-auto">
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={
+                        isStaff ? (
+                          selectedBimestre && (
+                            <SupervisorStatsDashboard
+                              bimestre={selectedBimestre}
+                            />
+                          )
+                        ) : (
+                          <TeacherDashboard
+                            academicLoad={academicLoad}
+                            tutorSections={tutorSections}
+                            selectedBimestre={selectedBimestre}
+                            userName={userName}
+                            progressStats={progressStats}
+                          />
+                        )
+                      }
+                    />
+
+                    <Route
+                      path="/monitoreo"
+                      element={
+                        isStaff && selectedBimestre ? (
+                          <AcademicMonitoring
+                            role={currentUserRole}
+                            bimestre={selectedBimestre}
+                            allBimestres={bimestres}
+                            onBimestreChange={(b) => setSelectedBimestre(b)}
+                            grades={grades}
+                            appreciations={appreciations}
+                            tutorData={tutorData}
+                            familyCommitments={familyCommitments}
+                            familyEvaluations={familyEvaluations}
+                            onApproveAppreciation={approveAppreciation}
+                            onUpdateAppreciation={updateAppreciation}
+                            onUpdateGrade={updateGrade}
+                          />
+                        ) : <Navigate to="/" />
+                      }
+                    />
+
+                    <Route
+                      path="/apreciaciones"
+                      element={
+                        isStaff && selectedBimestre ? (
+                          <AppreciationsReview
+                            role={currentUserRole}
+                            bimestre={selectedBimestre}
+                            allBimestres={bimestres}
+                            onBimestreChange={(b) => setSelectedBimestre(b)}
+                            onApproveAppreciation={approveAppreciation}
+                            onUpdateAppreciation={updateAppreciation}
+                          />
+                        ) : <Navigate to="/" />
+                      }
+                    />
+
+                    <Route
+                      path="/reportes"
+                      element={
+                        isStaff ? <ReportsModule /> : <Navigate to="/" />
+                      }
+                    />
+
+                    <Route
+                      path="/mis-cursos"
+                      element={
+                        <TeacherCourseList
+                          academicLoad={academicLoad}
+                          tutorSections={tutorSections}
+                          selectedBimestre={selectedBimestre}
+                        />
+                      }
+                    />
+
+                    <Route
+                      path="/curso/:id"
+                      element={
+                        <CourseRouteWrapper
+                          selectedCourse={selectedCourse}
+                          setSelectedCourse={setSelectedCourse}
+                          academicLoad={academicLoad}
+                          fetchStudents={fetchStudents}
+                          fetchGrades={fetchGrades}
+                          loadingStudents={loadingStudents}
+                          selectedBimestre={selectedBimestre}
+                          currentUserRole={currentUserRole}
+                          students={students}
+                          grades={grades}
+                          appreciations={appreciations}
+                          tutorData={tutorData}
+                          familyCommitments={familyCommitments}
+                          familyEvaluations={familyEvaluations}
+                          updateGrade={updateGrade}
+                          updateAppreciation={updateAppreciation}
+                          approveAppreciation={approveAppreciation}
+                          updateTutorData={updateTutorData}
+                          updateFamilyEvaluation={updateFamilyEvaluation}
+                          handleBackToDashboard={handleBackToCourses}
+                          loadingCourses={loadingCourses}
+                        />
+                      }
+                    />
+
+                    <Route
+                      path="/tutoria/:classroomId"
+                      element={
+                        <TutorRouteWrapper
+                          selectedCourse={selectedCourse}
+                          setSelectedCourse={setSelectedCourse}
+                          academicLoad={academicLoad}
+                          fetchStudents={fetchStudents}
+                          fetchGrades={fetchGrades}
+                          loadingStudents={loadingStudents}
+                          selectedBimestre={selectedBimestre}
+                          currentUserRole={currentUserRole}
+                          students={students}
+                          grades={grades}
+                          appreciations={appreciations}
+                          tutorData={tutorData}
+                          familyCommitments={familyCommitments}
+                          familyEvaluations={familyEvaluations}
+                          updateGrade={updateGrade}
+                          updateAppreciation={updateAppreciation}
+                          approveAppreciation={approveAppreciation}
+                          updateTutorData={updateTutorData}
+                          updateFamilyEvaluation={updateFamilyEvaluation}
+                          handleBackToDashboard={handleBackToCourses}
+                          loadingCourses={loadingCourses}
+                        />
+                      }
+                    />
+
+                    <Route
+                      path="/familia/:classroomId"
+                      element={
+                        <FamilyRouteWrapper
+                          selectedCourse={selectedCourse}
+                          setSelectedCourse={setSelectedCourse}
+                          academicLoad={academicLoad}
+                          fetchStudents={fetchStudents}
+                          fetchGrades={fetchGrades}
+                          loadingStudents={loadingStudents}
+                          selectedBimestre={selectedBimestre}
+                          currentUserRole={currentUserRole}
+                          students={students}
+                          grades={grades}
+                          appreciations={appreciations}
+                          tutorData={tutorData}
+                          familyCommitments={familyCommitments}
+                          familyEvaluations={familyEvaluations}
+                          updateGrade={updateGrade}
+                          updateAppreciation={updateAppreciation}
+                          approveAppreciation={approveAppreciation}
+                          updateTutorData={updateTutorData}
+                          updateFamilyEvaluation={updateFamilyEvaluation}
+                          handleBackToDashboard={handleBackToCourses}
+                          loadingCourses={loadingCourses}
+                        />
+                      }
+                    />
+
+                    {/* Redirección por defecto si la ruta no existe */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </main>
               </div>
             </div>
-
-            {loadingStudents ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="animate-spin text-institutional" size={48} />
-              </div>
-            ) : selectedBimestre ? (
-              <GradingMatrix
-                role={currentUserRole}
-                course={course}
-                students={students}
-                isTutorMode={false}
-                isFamilyMode={false}
-                bimestre={selectedBimestre}
-                grades={grades}
-                appreciations={appreciations}
-                tutorData={tutorData}
-                familyCommitments={familyCommitments}
-                familyEvaluations={familyEvaluations}
-                onUpdateGrade={updateGrade}
-                onUpdateAppreciation={updateAppreciation}
-                onApproveAppreciation={approveAppreciation}
-                onUpdateTutorData={updateTutorData}
-                onUpdateFamilyEvaluation={updateFamilyEvaluation}
-              />
-            ) : null}
-          </div>
-        );
-      };
-
-      const TutorRouteWrapper = ({
-        selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
-        currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-        updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
-      }: any) => {
-        const { classroomId } = useParams<{ classroomId: string }>();
-        const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
-
-        useEffect(() => {
-          if (course && selectedBimestre) {
-            fetchStudents(course.classroomId);
-            fetchGrades(course.classroomId, selectedBimestre.id, course.id);
-            setSelectedCourse(course);
-          }
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, [classroomId, selectedBimestre, academicLoad]);
-
-        if (loadingCourses) return (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="animate-spin text-institutional" size={48} />
-              <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Cargando datos de tutoría...</p>
-            </div>
-          </div>
-        );
-
-        if (academicLoad.length > 0 && !course) {
-          console.warn("Tutor course not found for classroom:", classroomId);
-          return <Navigate to="/" replace />;
+          </RequireAuth>
         }
-        if (!course) return null;
+      />
+    </Routes>
+  );
+};
 
-        return (
-          <div>
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
-                  <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
-                </button>
-                <div className="min-w-0">
-                  <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Módulo de Tutoría</h2>
-                  <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
-                </div>
-              </div>
-            </div>
+// Helper components for Routes to avoid large inline code and handle initial student fetch
+const CourseRouteWrapper = ({
+  selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
+  currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
+}: any) => {
+  const { id } = useParams<{ id: string }>();
+  const course = academicLoad.find((c: any) => c.id === id);
 
-            {loadingStudents ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="animate-spin text-institutional" size={48} />
-              </div>
-            ) : selectedBimestre ? (
-              <GradingMatrix
-                role={currentUserRole}
-                course={course}
-                students={students}
-                isTutorMode={true}
-                isFamilyMode={false}
-                bimestre={selectedBimestre}
-                grades={grades}
-                appreciations={appreciations}
-                tutorData={tutorData}
-                familyCommitments={familyCommitments}
-                familyEvaluations={familyEvaluations}
-                onUpdateGrade={updateGrade}
-                onUpdateAppreciation={updateAppreciation}
-                onApproveAppreciation={approveAppreciation}
-                onUpdateTutorData={updateTutorData}
-                onUpdateFamilyEvaluation={updateFamilyEvaluation}
-              />
-            ) : null}
+  useEffect(() => {
+    if (course && selectedBimestre) {
+      fetchStudents(course.classroomId);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      setSelectedCourse(course);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [id, selectedBimestre, academicLoad]);
+
+  if (loadingCourses) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="animate-spin text-institutional" size={48} />
+    </div>
+  );
+
+  if (academicLoad.length > 0 && !course) {
+    console.warn("Course not found for ID:", id);
+    return <Navigate to="/" replace />;
+  }
+
+  if (!course) return null;
+
+  return (
+    <div>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
+            <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
+              {course.courseName}
+            </h2>
+            <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
           </div>
-        );
-      };
+        </div>
+      </div>
 
-      const FamilyRouteWrapper = ({
-        selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
-        currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-        updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
-      }: any) => {
-        const { classroomId } = useParams<{ classroomId: string }>();
-        const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
+      {loadingStudents ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-institutional" size={48} />
+        </div>
+      ) : selectedBimestre ? (
+        <GradingMatrix
+          role={currentUserRole}
+          course={course}
+          students={students}
+          isTutorMode={false}
+          isFamilyMode={false}
+          bimestre={selectedBimestre}
+          grades={grades}
+          appreciations={appreciations}
+          tutorData={tutorData}
+          familyCommitments={familyCommitments}
+          familyEvaluations={familyEvaluations}
+          onUpdateGrade={updateGrade}
+          onUpdateAppreciation={updateAppreciation}
+          onApproveAppreciation={approveAppreciation}
+          onUpdateTutorData={updateTutorData}
+          onUpdateFamilyEvaluation={updateFamilyEvaluation}
+        />
+      ) : null}
+    </div>
+  );
+};
 
-        useEffect(() => {
-          if (course && selectedBimestre) {
-            fetchStudents(course.classroomId);
-            fetchGrades(course.classroomId, selectedBimestre.id, course.id);
-            setSelectedCourse(course);
-          }
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, [classroomId, selectedBimestre, academicLoad]);
+const TutorRouteWrapper = ({
+  selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
+  currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
+}: any) => {
+  const { classroomId } = useParams<{ classroomId: string }>();
+  const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
-        if (loadingCourses) return (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="animate-spin text- institutional" size={48} />
-              <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Cargando compromisos de familia...</p>
-            </div>
+  useEffect(() => {
+    if (course && selectedBimestre) {
+      fetchStudents(course.classroomId);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      setSelectedCourse(course);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [classroomId, selectedBimestre, academicLoad]);
+
+  if (loadingCourses) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="animate-spin text-institutional" size={48} />
+        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Cargando datos de tutoría...</p>
+      </div>
+    </div>
+  );
+
+  if (academicLoad.length > 0 && !course) {
+    console.warn("Tutor course not found for classroom:", classroomId);
+    return <Navigate to="/" replace />;
+  }
+  if (!course) return null;
+
+  return (
+    <div>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
+            <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Módulo de Tutoría</h2>
+            <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
           </div>
-        );
+        </div>
+      </div>
 
-        if (academicLoad.length > 0 && !course) {
-          console.warn("Family course not found for classroom:", classroomId);
-          return <Navigate to="/" replace />;
-        }
-        if (!course) return null;
+      {loadingStudents ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-institutional" size={48} />
+        </div>
+      ) : selectedBimestre ? (
+        <GradingMatrix
+          role={currentUserRole}
+          course={course}
+          students={students}
+          isTutorMode={true}
+          isFamilyMode={false}
+          bimestre={selectedBimestre}
+          grades={grades}
+          appreciations={appreciations}
+          tutorData={tutorData}
+          familyCommitments={familyCommitments}
+          familyEvaluations={familyEvaluations}
+          onUpdateGrade={updateGrade}
+          onUpdateAppreciation={updateAppreciation}
+          onApproveAppreciation={approveAppreciation}
+          onUpdateTutorData={updateTutorData}
+          onUpdateFamilyEvaluation={updateFamilyEvaluation}
+        />
+      ) : null}
+    </div>
+  );
+};
 
-        return (
-          <div>
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
-                  <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
-                </button>
-                <div className="min-w-0">
-                  <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Compromisos de la Familia</h2>
-                  <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
-                </div>
-              </div>
-            </div>
+const FamilyRouteWrapper = ({
+  selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
+  currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
+}: any) => {
+  const { classroomId } = useParams<{ classroomId: string }>();
+  const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
-            {loadingStudents ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="animate-spin text-institutional" size={48} />
-              </div>
-            ) : selectedBimestre ? (
-              <GradingMatrix
-                role={currentUserRole}
-                course={course}
-                students={students}
-                isTutorMode={false}
-                isFamilyMode={true}
-                bimestre={selectedBimestre}
-                grades={grades}
-                appreciations={appreciations}
-                tutorData={tutorData}
-                familyCommitments={familyCommitments}
-                familyEvaluations={familyEvaluations}
-                onUpdateGrade={updateGrade}
-                onUpdateAppreciation={updateAppreciation}
-                onApproveAppreciation={approveAppreciation}
-                onUpdateTutorData={updateTutorData}
-                onUpdateFamilyEvaluation={updateFamilyEvaluation}
-              />
-            ) : null}
+  useEffect(() => {
+    if (course && selectedBimestre) {
+      fetchStudents(course.classroomId);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      setSelectedCourse(course);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [classroomId, selectedBimestre, academicLoad]);
+
+  if (loadingCourses) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="animate-spin text- institutional" size={48} />
+        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Cargando compromisos de familia...</p>
+      </div>
+    </div>
+  );
+
+  if (academicLoad.length > 0 && !course) {
+    console.warn("Family course not found for classroom:", classroomId);
+    return <Navigate to="/" replace />;
+  }
+  if (!course) return null;
+
+  return (
+    <div>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <button onClick={handleBackToDashboard} className="p-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl shadow-sm transition-all group active:scale-90">
+            <ChevronLeft className="text-gray-400 group-hover:text-institutional" size={24} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Compromisos de la Familia</h2>
+            <p className="text-sm text-gray-500 font-bold">{course.gradeSection} • {selectedBimestre?.label}</p>
           </div>
-        );
-      };
+        </div>
+      </div>
 
-      export default App;
+      {loadingStudents ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-institutional" size={48} />
+        </div>
+      ) : selectedBimestre ? (
+        <GradingMatrix
+          role={currentUserRole}
+          course={course}
+          students={students}
+          isTutorMode={false}
+          isFamilyMode={true}
+          bimestre={selectedBimestre}
+          grades={grades}
+          appreciations={appreciations}
+          tutorData={tutorData}
+          familyCommitments={familyCommitments}
+          familyEvaluations={familyEvaluations}
+          onUpdateGrade={updateGrade}
+          onUpdateAppreciation={updateAppreciation}
+          onApproveAppreciation={approveAppreciation}
+          onUpdateTutorData={updateTutorData}
+          onUpdateFamilyEvaluation={updateFamilyEvaluation}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+export default App;
