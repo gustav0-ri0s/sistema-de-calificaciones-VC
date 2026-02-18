@@ -168,6 +168,13 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                 <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Listado Informativo y Progreso de Llenado</p>
             </div>
 
+            {loading && (
+                <div className="mb-8 flex items-center justify-center py-4 bg-institutional/5 border border-institutional/10 rounded-3xl gap-3 text-institutional font-black uppercase text-[11px] tracking-[0.2em] animate-in fade-in slide-in-from-top-4 duration-500">
+                    <Loader2 className="animate-spin" size={18} />
+                    <span>Recalculando progreso...</span>
+                </div>
+            )}
+
             <div className="space-y-6">
                 {/* TUTORIA CARD (If exists) */}
                 {tutorSections.map(section => {
@@ -260,12 +267,7 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                     );
                 })}
 
-                {loading && (
-                    <div className="flex items-center justify-center p-12 gap-3 text-slate-400 font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">
-                        <Loader2 className="animate-spin" size={20} />
-                        Recalculando progreso...
-                    </div>
-                )}
+
             </div>
         </div>
     );
