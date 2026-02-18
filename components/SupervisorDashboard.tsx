@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserRole, Student, AcademicLoad, GradeEntry, AppreciationEntry, TutorValues, Bimestre, GradeLevel, FamilyCommitment, FamilyEvaluation } from '../types';
-import { ShieldCheck, Users, FileText, CheckCircle2, Search, LayoutGrid, ChevronRight, ArrowLeft, Info, X, Lock, Loader2, MessageSquare, Check } from 'lucide-react';
+import { ShieldCheck, Users, FileText, CheckCircle2, Search, LayoutGrid, ChevronRight, ArrowLeft, Info, X, Lock, Loader2, MessageSquare, Check, RotateCw } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
 import { supabase } from '../lib/supabase';
 
@@ -17,6 +17,7 @@ interface SupervisorDashboardProps {
   familyEvaluations: FamilyEvaluation[];
   onApproveAppreciation: (sId: string) => void;
   onUpdateAppreciation: (sId: string, comment: string) => void;
+  onUpdateGrade: (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => void;
 }
 
 interface SectionStats {
@@ -37,7 +38,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   grades,
   appreciations,
   onApproveAppreciation,
-  onUpdateAppreciation
+  onUpdateAppreciation,
+  onUpdateGrade
 }) => {
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
   const [selectedSectionName, setSelectedSectionName] = useState<string | null>(null);
@@ -54,7 +56,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [sectionsData, setSectionsData] = useState<SectionStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [sectionStudents, setSectionStudents] = useState<Student[]>([]);
+  const [sectionGrades, setSectionGrades] = useState<GradeEntry[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [editingGradeData, setEditingGradeData] = useState<{
+    student: Student;
+    competencyId: string;
+    grade: GradeLevel;
+    conclusion: string;
+  } | null>(null);
   const [sectionCourses, setSectionCourses] = useState<AcademicLoad[]>([]); // To audit specific courses
 
   // Filter State
@@ -131,14 +141,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               const totalSlots = studentsInClass.length * totalCompetenciesInClass;
 
               // 2. Get filled grades count
-              const { count: gradeCount } = await supabase
+              const { data: gData, error: gError } = await supabase
                 .from('student_grades')
-                .select('*', { count: 'exact', head: true })
+                .select('id')
                 .in('student_id', studentsInClass)
-                .eq('bimestre_id', bimestre.id);
+                .eq('bimestre_id', parseInt(bimestre.id));
 
-              if (totalSlots > 0 && gradeCount !== null) {
-                realProgress = Math.round((gradeCount / totalSlots) * 100);
+              if (totalSlots > 0 && gData) {
+                realProgress = Math.round((gData.length / totalSlots) * 100);
               }
             }
 
@@ -148,7 +158,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               const { count } = await supabase
                 .from('student_appreciations')
                 .select('*', { count: 'exact', head: true })
-                .eq('bimestre_id', bimestre.id)
+                .eq('bimestre_id', parseInt(bimestre.id))
                 .eq('is_approved', false)
                 .in('student_id', studentsInClass);
               pendingCount = count || 0;
@@ -176,12 +186,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     };
 
     fetchGlobalStats();
-  }, [bimestre.id]);
+  }, [bimestre.id, refreshTrigger]);
 
   // Fetch Students when a section is selected
   useEffect(() => {
     const fetchSectionDetails = async () => {
-      if (!selectedSectionId) return;
+      if (!selectedSectionId) {
+        setSectionGrades([]);
+        return;
+      }
 
       setLoadingStudents(true);
       try {
@@ -226,6 +239,28 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         }));
         setSectionCourses(mappedCourses);
 
+        // Get Grades for this section
+        const studentIds = mappedStudents.map(s => s.id);
+        if (studentIds.length > 0) {
+          const { data: gData, error: gError } = await supabase
+            .from('student_grades')
+            .select('*')
+            .in('student_id', studentIds)
+            .eq('bimestre_id', parseInt(bimestre.id));
+
+          if (gError) throw gError;
+
+          if (gData) {
+            setSectionGrades(gData.map((g: any) => ({
+              studentId: g.student_id,
+              courseId: '',
+              competencyId: g.competency_id.toString(),
+              grade: g.grade as GradeLevel,
+              descriptiveConclusion: g.descriptive_conclusion || ''
+            })));
+          }
+        }
+
       } catch (err) {
         console.error('Error fetching section details:', err);
       } finally {
@@ -234,15 +269,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     };
 
     fetchSectionDetails();
-  }, [selectedSectionId]);
+  }, [selectedSectionId, bimestre.id, refreshTrigger]);
 
 
   const getStudentAudit = (studentId: string) => {
     // This now needs to use sectionCourses instead of MOCK_ACADEMIC_LOAD
     return sectionCourses.map(course => {
-      // Still using local state 'grades' for now, as DB grades table logic isn't built yet
+      // Use sectionGrades (local) instead of grades (prop)
       const comps = (course.competencies || []).map((c: any) => {
-        const gradeEntry = grades.find((g) => g.studentId === studentId && g.competencyId === c.id.toString());
+        const gradeEntry = sectionGrades.find((g) => g.studentId === studentId && g.competencyId === c.id.toString());
         return {
           name: c.name,
           isFilled: !!gradeEntry,
@@ -262,7 +297,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     // Avoid division by zero
     if (totalCompetencies === 0) return { progress: 0, isApproved: false, hasAppreciation: false };
 
-    const studentGrades = grades.filter(g => g.studentId === studentId); // Local state check
+    const studentGrades = sectionGrades.filter(g => g.studentId === studentId); // Local state check
     const progress = Math.round((studentGrades.length / totalCompetencies) * 100);
     const appreciation = appreciations.find(a => a.studentId === studentId); // Local state check
 
@@ -283,17 +318,44 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header with Bimestre Switcher */}
       <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-gray-100 flex flex-col gap-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldCheck className="text-institutional" size={20} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-institutional">Staff Institucional</span>
+        <div className="flex flex-col md:flex-row md::items-center justify-between gap-6">
+          {!selectedSectionId ? (
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-institutional/10 rounded-3xl text-institutional">
+                <LayoutGrid size={32} />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tight">Panel de Control</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-slate-400 font-bold text-sm">Resumen de avance por salón</p>
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      // Triggering a re-renders by setting loading and the effect will run as it has no other deps except bimestre
+                      // But to be sure, let's just use a local trigger
+                      setRefreshTrigger(prev => prev + 1);
+                    }}
+                    className="p-1 px-2 hover:bg-slate-100 rounded-lg text-institutional transition-all flex items-center gap-1.5"
+                    title="Actualizar Datos"
+                  >
+                    <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+                    <span className="text-[10px] font-black uppercase">Actualizar</span>
+                  </button>
+                </div>
+              </div>
             </div>
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-              {selectedSectionId ? `Sección: ${selectedSectionName}` : 'Panel de Supervisión'}
-            </h2>
-            <p className="text-gray-500 font-medium">Gestión institucional y auditoría de carga académica.</p>
-          </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldCheck className="text-institutional" size={20} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-institutional">Staff Institucional</span>
+              </div>
+              <h2 className="text-3xl font-black text-gray-900 tracking-tight">
+                Sección: {selectedSectionName}
+              </h2>
+              <p className="text-gray-500 font-medium">Gestión institucional y auditoría de carga académica.</p>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex items-center gap-1 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 shadow-inner overflow-x-auto no-scrollbar max-w-full">
@@ -585,18 +647,33 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <span className="text-[10px] text-gray-600 font-bold">{c.name}</span>
                             <div className="flex flex-col items-end gap-1">
                               {c.isFilled ? (
-                                <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                  c.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
-                                    c.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                      'bg-red-50 text-red-700 border-red-100'
-                                  }`}>
+                                <button
+                                  onClick={() => setEditingGradeData({
+                                    student: auditingStudent,
+                                    competencyId: c.id,
+                                    grade: c.grade as GradeLevel,
+                                    conclusion: c.descriptiveConclusion
+                                  })}
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all hover:scale-105 ${c.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                    c.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                      c.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                        'bg-red-50 text-red-700 border-red-100'
+                                    }`}>
                                   {c.grade}
-                                </div>
+                                </button>
                               ) : (
-                                <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setEditingGradeData({
+                                    student: auditingStudent,
+                                    competencyId: c.id,
+                                    grade: '',
+                                    conclusion: ''
+                                  })}
+                                  className="flex items-center gap-1 hover:bg-gray-100 p-1 rounded-md transition-colors"
+                                >
                                   <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
                                   <span className="text-[9px] font-black text-red-300 uppercase">Sin Nota</span>
-                                </div>
+                                </button>
                               )}
                               {c.descriptiveConclusion && (
                                 <div className="flex items-center gap-1.5 px-2 py-1 bg-institutional/5 text-institutional rounded-lg border border-institutional/10">
@@ -612,6 +689,102 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDICIÓN DE NOTA (SOPORTE PARA SUPERVISOR) */}
+      {editingGradeData && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingGradeData(null)}></div>
+          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+              <ShieldCheck className="text-institutional" size={24} />
+              Modificar Calificación
+            </h3>
+
+            <div className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Nombre del Estudiante</label>
+                <div className="p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700">{editingGradeData.student.fullName}</div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Calificación</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {['', 'AD', 'A', 'B', 'C'].map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setEditingGradeData({ ...editingGradeData, grade: g as GradeLevel })}
+                      className={`py-3 rounded-xl text-xs font-black transition-all border-2 ${editingGradeData.grade === g
+                        ? 'bg-institutional border-institutional text-white'
+                        : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                        }`}
+                    >
+                      {g === '' ? '-' : g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Conclusión Descriptiva</label>
+                <textarea
+                  value={editingGradeData.conclusion}
+                  onChange={(e) => setEditingGradeData({ ...editingGradeData, conclusion: e.target.value })}
+                  placeholder="Ingrese la conclusión descriptiva aquí..."
+                  className="w-full h-32 p-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-4 focus:ring-institutional/10 transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditingGradeData(null)}
+                  className="flex-1 py-4 rounded-2xl text-xs font-black uppercase text-slate-400 hover:bg-slate-50 transition-all border-2 border-transparent"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    // Save to DB
+                    await onUpdateGrade(
+                      editingGradeData.student.id,
+                      editingGradeData.competencyId,
+                      editingGradeData.grade,
+                      editingGradeData.conclusion
+                    );
+
+                    // Update local state
+                    setSectionGrades(prev => {
+                      const existingIndex = prev.findIndex(g =>
+                        g.studentId === editingGradeData.student.id &&
+                        g.competencyId === editingGradeData.competencyId
+                      );
+
+                      const newItem = {
+                        studentId: editingGradeData.student.id,
+                        competencyId: editingGradeData.competencyId,
+                        courseId: '',
+                        grade: editingGradeData.grade,
+                        descriptiveConclusion: editingGradeData.conclusion
+                      };
+
+                      if (existingIndex >= 0) {
+                        const next = [...prev];
+                        next[existingIndex] = newItem;
+                        return next;
+                      }
+                      return [...prev, newItem];
+                    });
+
+                    setEditingGradeData(null);
+                  }}
+                  className="flex-1 py-4 bg-institutional text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-institutional/20 hover:brightness-110 active:scale-95 transition-all"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
             </div>
           </div>
         </div>

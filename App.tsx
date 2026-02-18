@@ -641,6 +641,7 @@ const App: React.FC = () => {
                               onUpdateAppreciation={updateAppreciation}
                               familyCommitments={familyCommitments}
                               familyEvaluations={familyEvaluations}
+                              onUpdateGrade={updateGrade}
                             />
                           )
                         ) : (
