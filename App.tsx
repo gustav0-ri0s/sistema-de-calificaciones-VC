@@ -95,7 +95,7 @@ const App: React.FC = () => {
   // Fetch Grades when Course or Bimestre Changes
   useEffect(() => {
     if (selectedCourse && selectedBimestre) {
-      fetchGrades(selectedCourse.classroomId, selectedBimestre.id);
+      fetchGrades(selectedCourse.classroomId, selectedBimestre.id, selectedCourse.id);
     }
   }, [selectedCourse, selectedBimestre]);
 
@@ -303,7 +303,7 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchGrades = async (classroomId: number, bimestreId: string) => {
+  const fetchGrades = async (classroomId: number, bimestreId: string, courseId?: string) => {
     try {
       // Get students first to filter grades
       const { data: sData } = await supabase.from('students').select('id').eq('classroom_id', classroomId);
@@ -325,7 +325,7 @@ const App: React.FC = () => {
       if (data) {
         setGrades(data.map((g: any) => ({
           studentId: g.student_id,
-          courseId: selectedCourse?.id || '',
+          courseId: courseId || selectedCourse?.id || '',
           competencyId: g.competency_id.toString(),
           grade: g.grade as GradeLevel,
           descriptiveConclusion: g.descriptive_conclusion || ''
@@ -760,8 +760,10 @@ const App: React.FC = () => {
                       element={
                         <CourseRouteWrapper
                           selectedCourse={selectedCourse}
+                          setSelectedCourse={setSelectedCourse}
                           academicLoad={academicLoad}
                           fetchStudents={fetchStudents}
+                          fetchGrades={fetchGrades}
                           loadingStudents={loadingStudents}
                           selectedBimestre={selectedBimestre}
                           currentUserRole={currentUserRole}
@@ -786,8 +788,10 @@ const App: React.FC = () => {
                       element={
                         <TutorRouteWrapper
                           selectedCourse={selectedCourse}
+                          setSelectedCourse={setSelectedCourse}
                           academicLoad={academicLoad}
                           fetchStudents={fetchStudents}
+                          fetchGrades={fetchGrades}
                           loadingStudents={loadingStudents}
                           selectedBimestre={selectedBimestre}
                           currentUserRole={currentUserRole}
@@ -812,8 +816,10 @@ const App: React.FC = () => {
                       element={
                         <FamilyRouteWrapper
                           selectedCourse={selectedCourse}
+                          setSelectedCourse={setSelectedCourse}
                           academicLoad={academicLoad}
                           fetchStudents={fetchStudents}
+                          fetchGrades={fetchGrades}
                           loadingStudents={loadingStudents}
                           selectedBimestre={selectedBimestre}
                           currentUserRole={currentUserRole}
@@ -848,7 +854,7 @@ const App: React.FC = () => {
 
 // Helper components for Routes to avoid large inline code and handle initial student fetch
 const CourseRouteWrapper = ({
-  selectedCourse, academicLoad, fetchStudents, loadingStudents, selectedBimestre,
+  selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
   updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
 }: any) => {
@@ -857,11 +863,13 @@ const CourseRouteWrapper = ({
   const course = selectedCourse || academicLoad.find((c: any) => c.id === id);
 
   useEffect(() => {
-    if (course) {
+    if (course && selectedBimestre) {
       fetchStudents(course.classroomId);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      if (!selectedCourse) setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [course]);
+  }, [course, selectedBimestre, selectedCourse]);
 
   if (academicLoad.length > 0 && !course) {
     return <Navigate to="/" replace />;
@@ -914,7 +922,7 @@ const CourseRouteWrapper = ({
 };
 
 const TutorRouteWrapper = ({
-  selectedCourse, academicLoad, fetchStudents, loadingStudents, selectedBimestre,
+  selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
   updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
 }: any) => {
@@ -923,11 +931,13 @@ const TutorRouteWrapper = ({
   const course = selectedCourse || academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
   useEffect(() => {
-    if (course) {
+    if (course && selectedBimestre) {
       fetchStudents(course.classroomId);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      if (!selectedCourse) setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [course]);
+  }, [course, selectedBimestre, selectedCourse]);
 
   if (academicLoad.length > 0 && !course) return <Navigate to="/" replace />;
   if (!course) return null;
@@ -975,7 +985,7 @@ const TutorRouteWrapper = ({
 };
 
 const FamilyRouteWrapper = ({
-  selectedCourse, academicLoad, fetchStudents, loadingStudents, selectedBimestre,
+  selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
   updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
 }: any) => {
@@ -984,11 +994,13 @@ const FamilyRouteWrapper = ({
   const course = selectedCourse || academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
 
   useEffect(() => {
-    if (course) {
+    if (course && selectedBimestre) {
       fetchStudents(course.classroomId);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      if (!selectedCourse) setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [course]);
+  }, [course, selectedBimestre, selectedCourse]);
 
   if (academicLoad.length > 0 && !course) return <Navigate to="/" replace />;
   if (!course) return null;
