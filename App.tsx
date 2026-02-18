@@ -408,37 +408,67 @@ const App: React.FC = () => {
   };
 
   const updateGrade = async (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => {
-    if (selectedBimestre?.isLocked) return;
+    if (!selectedBimestre || selectedBimestre.isLocked) return;
+
+    const compIdStr = competencyId.toString();
 
     // Optimistic Update
     setGrades(prev => {
-      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === competencyId));
-      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId, grade, descriptiveConclusion }];
+      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
+      if (grade === '') return filtered;
+      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId: compIdStr, grade, descriptiveConclusion }];
     });
 
-    if (!selectedBimestre) return;
-
     try {
-      const { error } = await supabase.from('student_grades').upsert({
-        student_id: studentId,
-        competency_id: parseInt(competencyId),
-        bimestre_id: parseInt(selectedBimestre.id),
-        grade: grade,
-        descriptive_conclusion: descriptiveConclusion,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'student_id, competency_id, bimestre_id' });
+      if (grade === '') {
+        const { error } = await supabase
+          .from('student_grades')
+          .delete()
+          .match({
+            student_id: studentId,
+            competency_id: parseInt(compIdStr),
+            bimestre_id: parseInt(selectedBimestre.id)
+          });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('student_grades').upsert({
+          student_id: studentId,
+          competency_id: parseInt(compIdStr),
+          bimestre_id: parseInt(selectedBimestre.id),
+          grade: grade,
+          descriptive_conclusion: descriptiveConclusion,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, competency_id, bimestre_id' });
 
-      if (error) throw error;
-    } catch (err) {
+        if (error) throw error;
+      }
+    } catch (err: any) {
       console.error('Error saving grade:', err);
+      alert('Error al guardar: ' + (err.message || 'Error de conexión'));
     }
   };
 
   const updateFamilyEvaluation = (studentId: string, commitmentId: string, grade: GradeLevel) => {
-    if (selectedBimestre?.isLocked || currentUserRole === 'Supervisor') return;
+    if (selectedBimestre?.isLocked) return;
     setFamilyEvaluations(prev => {
       const filtered = prev.filter(e => !(e.studentId === studentId && e.commitmentId === commitmentId));
+      if (grade === '') return filtered;
       return [...filtered, { studentId, commitmentId, grade }];
+    });
+
+    if (!selectedBimestre) return;
+
+    supabase.from('family_evaluations').upsert({
+      student_id: studentId,
+      commitment_id: parseInt(commitmentId),
+      bimestre_id: parseInt(selectedBimestre.id),
+      grade: grade,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'student_id, commitment_id, bimestre_id' }).then(({ error }) => {
+      if (error) {
+        console.error('Error saving family evaluation:', error);
+        alert('Error al guardar evaluación de familia');
+      }
     });
   };
 

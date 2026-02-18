@@ -650,7 +650,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <button
                                   onClick={() => setEditingGradeData({
                                     student: auditingStudent,
-                                    competencyId: c.id,
+                                    competencyId: c.id.toString(),
                                     grade: c.grade as GradeLevel,
                                     conclusion: c.descriptiveConclusion
                                   })}
@@ -665,7 +665,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <button
                                   onClick={() => setEditingGradeData({
                                     student: auditingStudent,
-                                    competencyId: c.id,
+                                    competencyId: c.id.toString(),
                                     grade: '',
                                     conclusion: ''
                                   })}
@@ -763,12 +763,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                     // Update local state for immediate visual consistency in detailed view
                     setSectionGrades(prev => {
-                      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compId));
+                      const compIdStr = compId.toString();
+                      const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
                       if (gradeVal === '') return filtered;
 
                       return [...filtered, {
                         studentId: studentId,
-                        competencyId: compId,
+                        competencyId: compIdStr,
                         courseId: '',
                         grade: gradeVal,
                         descriptiveConclusion: concVal
