@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, BookOpen, AlertCircle, CheckCircle2, TrendingUp, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Bimestre } from '../types';
@@ -9,6 +10,7 @@ interface SupervisorStatsProps {
 }
 
 const SupervisorStatsDashboard: React.FC<SupervisorStatsProps> = ({ bimestre }) => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         totalStudents: 0,
         totalCourses: 0,
@@ -153,7 +155,7 @@ const SupervisorStatsDashboard: React.FC<SupervisorStatsProps> = ({ bimestre }) 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 <div
                     role="button"
-                    onClick={() => window.location.href = '/monitoreo'}
+                    onClick={() => navigate('/monitoreo')}
                     className="bg-white p-8 rounded-[2.5rem] border border-gray-100 hover:shadow-xl transition-all flex items-center gap-6 group cursor-pointer"
                 >
                     <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-institutional group-hover:text-white transition-all">
@@ -167,7 +169,7 @@ const SupervisorStatsDashboard: React.FC<SupervisorStatsProps> = ({ bimestre }) 
 
                 <div
                     role="button"
-                    onClick={() => window.location.href = '/apreciaciones'}
+                    onClick={() => navigate('/apreciaciones')}
                     className="bg-white p-8 rounded-[2.5rem] border border-gray-100 hover:shadow-xl transition-all flex items-center gap-6 group cursor-pointer"
                 >
                     <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-rose-500 group-hover:text-white transition-all">
