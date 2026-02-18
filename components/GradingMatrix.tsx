@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, Student, UserRole, FamilyCommitment, FamilyEvaluation } from '../types';
-import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle } from 'lucide-react';
+import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
 import { generateGlobalReportCard } from '../utils/pdfGenerator';
 
@@ -142,16 +142,41 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
         </div>
       )}
 
-      {/* COMPROMISOS DE LA FAMILIA - LISTADO DE ÍTEMS */}
+      {/* COMPROMISOS DE LA FAMILIA - CABECERA PREMIUM */}
       {isFamilyMode && (
-        <div className="animate-in slide-in-from-top duration-500">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {familyCommitments.map((fc) => (
-              <div key={fc.id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4 group hover:border-institutional transition-all">
-                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-200 group-hover:text-institutional group-hover:bg-institutional/5 transition-all">
-                  <CheckCircle size={20} />
+        <div className="animate-in slide-in-from-top duration-700">
+          <div className="bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 shadow-2xl overflow-hidden relative group mb-8">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-800/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-slate-700/30 transition-all duration-700"></div>
+
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-300 shadow-inner border border-slate-700">
+                  <div className="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-700/50">
+                    <Heart size={24} className="text-[#38bdf8]" />
+                  </div>
                 </div>
-                <span className="text-xs font-black text-gray-500 uppercase leading-snug group-hover:text-gray-800">{fc.text}</span>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase leading-none mb-2">Compromisos de la Familia</h2>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest opacity-80">Evaluación cualitativa del apoyo parental en casa.</p>
+                </div>
+              </div>
+
+              {role === 'Administrador' && (
+                <button className="flex items-center gap-3 px-8 py-4 bg-[#38bdf8] text-[#0f172a] rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-[#38bdf8]/20 hover:scale-105 active:scale-95 transition-all">
+                  <Plus size={18} />
+                  Agregar Ítem Nuevo
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {familyCommitments.map((fc) => (
+              <div key={fc.id} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 shadow-sm flex items-center gap-5 group hover:border-[#38bdf8] hover:shadow-xl hover:shadow-[#38bdf8]/5 transition-all duration-300">
+                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-200 group-hover:text-[#38bdf8] group-hover:bg-[#38bdf8]/5 transition-all border border-slate-100">
+                  <CheckCircle size={22} />
+                </div>
+                <span className="text-xs font-black text-slate-500 uppercase leading-snug group-hover:text-slate-900 transition-colors">{fc.text}</span>
               </div>
             ))}
           </div>

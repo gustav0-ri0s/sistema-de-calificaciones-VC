@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
-import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, Home, Heart, Loader2 } from 'lucide-react';
+import { Routes, Route, useNavigate, useLocation, Navigate, useParams, Link } from 'react-router-dom';
+import { ClipboardCheck, Lock, ChevronLeft, LogOut, Star, BookOpen, UserCircle, Home, Heart, Loader2, Plus } from 'lucide-react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, UserRole, FamilyCommitment, FamilyEvaluation, Student } from './types';
 import CourseCard from './components/CourseCard';
 import GradingMatrix from './components/GradingMatrix';
@@ -9,6 +9,7 @@ import { supabase } from './lib/supabase';
 import AuthCallback from './components/AuthCallback';
 import RequireAuth from './components/RequireAuth';
 import Sidebar from './components/Sidebar';
+import TeacherCourseList from './components/TeacherCourseList';
 
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
 const ALLOWED_ROLES = ['DOCENTE', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
@@ -84,11 +85,12 @@ const App: React.FC = () => {
 
   const [userFullName, setUserFullName] = useState<string>('');
 
-  // Fetch Appreciations and Tutor Data when Bimestre Changes
+  // Fetch Appreciations, Tutor Data and Family Evaluations when Bimestre Changes
   useEffect(() => {
     if (selectedBimestre) {
       fetchAppreciations(selectedBimestre.id);
       fetchTutorData(selectedBimestre.id);
+      fetchFamilyEvaluations(selectedBimestre.id);
     }
   }, [selectedBimestre]);
 
@@ -197,48 +199,47 @@ const App: React.FC = () => {
 
       if (error) throw error;
 
-      if (data) {
-        const mappedLoad: AcademicLoad[] = data.map((item: any) => ({
-          id: item.id.toString(),
-          courseName: item.curricular_areas?.name || 'Curso Desconocido',
-          gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
-          isTutor: tutorClassroomId === item.classroom_id,
-          teacherName: '', // Can be filled if needed
-          classroomId: item.classroom_id || 0,
-          areaId: item.area_id || 0,
-          level: item.classrooms?.level,
-          competencies: item.curricular_areas?.competencies?.map((c: any) => ({
-            id: c.id.toString(),
-            name: c.name
-          })) || []
-        }));
+      const tId = tutorClassroomId ? Number(tutorClassroomId) : null;
+      const mappedLoad: AcademicLoad[] = data.map((item: any) => ({
+        id: item.id.toString(),
+        courseName: item.curricular_areas?.name || 'Curso Desconocido',
+        gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
+        isTutor: tId === Number(item.classroom_id),
+        teacherName: '', // Can be filled if needed
+        classroomId: Number(item.classroom_id) || 0,
+        areaId: item.area_id || 0,
+        level: item.classrooms?.level,
+        competencies: item.curricular_areas?.competencies?.map((c: any) => ({
+          id: c.id.toString(),
+          name: c.name
+        })) || []
+      }));
 
-        // If the teacher is a tutor but has no course_assignment in their tutor classroom,
-        // inject a virtual entry so the tutoring module still appears
-        if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === tutorClassroomId)) {
-          const { data: tutorClassroom } = await supabase
-            .from('classrooms')
-            .select('id, grade, section, level')
-            .eq('id', tutorClassroomId)
-            .single();
+      // If the teacher is a tutor but has no course_assignment in their tutor classroom,
+      // inject a virtual entry so the tutoring module still appears
+      if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === tutorClassroomId)) {
+        const { data: tutorClassroom } = await supabase
+          .from('classrooms')
+          .select('id, grade, section, level')
+          .eq('id', tutorClassroomId)
+          .single();
 
-          if (tutorClassroom) {
-            mappedLoad.push({
-              id: `tutor-virtual-${tutorClassroom.id}`,
-              courseName: 'Tutoría',
-              gradeSection: `${tutorClassroom.grade} ${tutorClassroom.section}`,
-              isTutor: true,
-              teacherName: '',
-              classroomId: tutorClassroom.id,
-              areaId: 0,
-              level: tutorClassroom.level,
-              competencies: []
-            });
-          }
+        if (tutorClassroom) {
+          mappedLoad.push({
+            id: `tutor-virtual-${tutorClassroom.id}`,
+            courseName: 'Tutoría',
+            gradeSection: `${tutorClassroom.grade} ${tutorClassroom.section}`,
+            isTutor: true,
+            teacherName: '',
+            classroomId: tutorClassroom.id,
+            areaId: 0,
+            level: tutorClassroom.level,
+            competencies: []
+          });
         }
-
-        setAcademicLoad(mappedLoad);
       }
+
+      setAcademicLoad(mappedLoad);
     } catch (err) {
       console.error('Error fetching courses:', err);
     } finally {
@@ -358,6 +359,27 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Error in fetchTutorData:', err);
+    }
+  };
+
+  const fetchFamilyEvaluations = async (bimestreId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('family_evaluations')
+        .select('*')
+        .eq('bimestre_id', parseInt(bimestreId));
+
+      if (error) throw error;
+
+      if (data) {
+        setFamilyEvaluations(data.map((e: any) => ({
+          studentId: e.student_id,
+          commitmentId: e.commitment_id.toString(),
+          grade: e.grade as GradeLevel
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching family evaluations:', err);
     }
   };
 
@@ -650,7 +672,7 @@ const App: React.FC = () => {
               </header>
 
               <div className="flex-1 flex max-w-[1600px] mx-auto w-full relative">
-                <Sidebar role={currentUserRole} onLogout={handleLogout} />
+                <Sidebar role={currentUserRole} onLogout={handleLogout} tutorSections={tutorSections} />
 
                 <main className="flex-1 px-4 py-8 overflow-y-auto">
                   <Routes>
@@ -713,7 +735,7 @@ const App: React.FC = () => {
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {tutorSections.map((section) => (
                                   <React.Fragment key={`tutor-frag-${section.id}`}>
-                                    <div onClick={() => handleTutorSelect(section)} className="group relative bg-white border-2 border-amber-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-amber-50/50">
+                                    <Link to={`/tutoria/${section.classroomId}`} className="group relative bg-white border-2 border-amber-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-amber-50/50 block">
                                       <div className="flex justify-between items-start mb-6">
                                         <div className="p-4 bg-amber-100 text-amber-600 rounded-2xl group-hover:bg-amber-600 group-hover:text-white transition-all shadow-inner">
                                           <Star size={28} fill="currentColor" />
@@ -723,9 +745,9 @@ const App: React.FC = () => {
                                       <h3 className="text-2xl font-black text-gray-800 mb-2">Módulo de Tutoría</h3>
                                       <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><BookOpen size={16} /> {section.gradeSection}</p>
                                       <div className="pt-5 border-t border-amber-50 flex items-center justify-between text-amber-600 font-black text-sm uppercase tracking-widest">Conducta →</div>
-                                    </div>
+                                    </Link>
 
-                                    <div onClick={() => handleFamilySelect(section)} className="group relative bg-white border-2 border-slate-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-slate-50/50">
+                                    <Link to={`/familia/${section.classroomId}`} className="group relative bg-white border-2 border-slate-200 rounded-3xl p-7 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all cursor-pointer ring-8 ring-slate-50/50 block">
                                       <div className="flex justify-between items-start mb-6">
                                         <div className="p-4 bg-slate-100 text-slate-600 rounded-2xl group-hover:bg-slate-800 group-hover:text-white transition-all shadow-inner">
                                           <Heart size={28} />
@@ -735,7 +757,7 @@ const App: React.FC = () => {
                                       <h3 className="text-2xl font-black text-gray-800 mb-2">Compromisos de la Familia</h3>
                                       <p className="text-gray-500 font-bold mb-6 flex items-center gap-2"><Home size={16} /> {section.gradeSection}</p>
                                       <div className="pt-5 border-t border-slate-50 flex items-center justify-between text-slate-600 font-black text-sm uppercase tracking-widest">Calificar Padres →</div>
-                                    </div>
+                                    </Link>
                                   </React.Fragment>
                                 ))}
 
@@ -752,6 +774,17 @@ const App: React.FC = () => {
                             )}
                           </div>
                         )
+                      }
+                    />
+
+                    <Route
+                      path="/mis-cursos"
+                      element={
+                        <TeacherCourseList
+                          academicLoad={academicLoad}
+                          tutorSections={tutorSections}
+                          selectedBimestre={selectedBimestre}
+                        />
                       }
                     />
 
@@ -779,6 +812,7 @@ const App: React.FC = () => {
                           updateTutorData={updateTutorData}
                           updateFamilyEvaluation={updateFamilyEvaluation}
                           handleBackToDashboard={handleBackToDashboard}
+                          loadingCourses={loadingCourses}
                         />
                       }
                     />
@@ -807,6 +841,7 @@ const App: React.FC = () => {
                           updateTutorData={updateTutorData}
                           updateFamilyEvaluation={updateFamilyEvaluation}
                           handleBackToDashboard={handleBackToDashboard}
+                          loadingCourses={loadingCourses}
                         />
                       }
                     />
@@ -835,6 +870,7 @@ const App: React.FC = () => {
                           updateTutorData={updateTutorData}
                           updateFamilyEvaluation={updateFamilyEvaluation}
                           handleBackToDashboard={handleBackToDashboard}
+                          loadingCourses={loadingCourses}
                         />
                       }
                     />
@@ -856,7 +892,7 @@ const App: React.FC = () => {
 const CourseRouteWrapper = ({
   selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
 }: any) => {
   const { id } = useParams<{ id: string }>();
 
@@ -871,7 +907,14 @@ const CourseRouteWrapper = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [course, selectedBimestre, selectedCourse]);
 
+  if (loadingCourses) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="animate-spin text-institutional" size={48} />
+    </div>
+  );
+
   if (academicLoad.length > 0 && !course) {
+    console.warn("Course not found for ID:", id);
     return <Navigate to="/" replace />;
   }
 
@@ -924,7 +967,7 @@ const CourseRouteWrapper = ({
 const TutorRouteWrapper = ({
   selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
 }: any) => {
   const { classroomId } = useParams<{ classroomId: string }>();
 
@@ -939,7 +982,19 @@ const TutorRouteWrapper = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [course, selectedBimestre, selectedCourse]);
 
-  if (academicLoad.length > 0 && !course) return <Navigate to="/" replace />;
+  if (loadingCourses) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="animate-spin text-institutional" size={48} />
+        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Cargando datos de tutoría...</p>
+      </div>
+    </div>
+  );
+
+  if (academicLoad.length > 0 && !course) {
+    console.warn("Tutor course not found for classroom:", classroomId);
+    return <Navigate to="/" replace />;
+  }
   if (!course) return null;
 
   return (
@@ -987,7 +1042,7 @@ const TutorRouteWrapper = ({
 const FamilyRouteWrapper = ({
   selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
 }: any) => {
   const { classroomId } = useParams<{ classroomId: string }>();
 
@@ -1002,7 +1057,19 @@ const FamilyRouteWrapper = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [course, selectedBimestre, selectedCourse]);
 
-  if (academicLoad.length > 0 && !course) return <Navigate to="/" replace />;
+  if (loadingCourses) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="animate-spin text- institutional" size={48} />
+        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Cargando compromisos de familia...</p>
+      </div>
+    </div>
+  );
+
+  if (academicLoad.length > 0 && !course) {
+    console.warn("Family course not found for classroom:", classroomId);
+    return <Navigate to="/" replace />;
+  }
   if (!course) return null;
 
   return (

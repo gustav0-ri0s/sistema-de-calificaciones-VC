@@ -1,22 +1,25 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, BookOpen, UserCheck, Heart, LogOut, Home } from 'lucide-react';
-import { UserRole } from '../types';
+import { UserRole, AcademicLoad } from '../types';
 
 interface SidebarProps {
     role: UserRole | null;
     onLogout: () => void;
+    tutorSections?: AcademicLoad[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ role, onLogout, tutorSections = [] }) => {
     const location = useLocation();
     const isDocente = role === 'Docente';
     const isStaff = role === 'Supervisor' || role === 'Administrador';
 
+    const firstTutorSection = tutorSections.length > 0 ? tutorSections[0] : null;
+
     const menuItems = [
         {
             to: '/',
-            label: 'Inicio',
+            label: 'Dashboard',
             icon: <LayoutDashboard size={20} />,
             show: true
         },
@@ -27,16 +30,16 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onLogout }) => {
             show: isDocente
         },
         {
-            to: '/tutoria-check', // Placeholder for "current active"
+            to: firstTutorSection ? `/tutoria/${firstTutorSection.classroomId}` : '#',
             label: 'Tutoría',
             icon: <UserCheck size={20} />,
-            show: isDocente
+            show: isDocente && !!firstTutorSection
         },
         {
-            to: '/familia-check',
+            to: firstTutorSection ? `/familia/${firstTutorSection.classroomId}` : '#',
             label: 'Familia',
             icon: <Heart size={20} />,
-            show: isDocente
+            show: isDocente && !!firstTutorSection
         }
     ];
 
