@@ -100,57 +100,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </div>
             </div>
 
-            {/* Tutor Modules Quick Access */}
-            {tutorSections.length > 0 && (
-                <div className="mb-12">
-                    <div className="flex items-center gap-3 mb-8">
-                        <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">Módulos de Tutoría</h3>
-                        <div className="h-px flex-1 bg-slate-100"></div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {tutorSections.map((section) => (
-                            <React.Fragment key={`dash-tutor-${section.id}`}>
-                                <Link to={`/tutoria/${section.classroomId}`} className="group relative bg-white border-2 border-amber-200 rounded-[2.5rem] p-10 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer ring-8 ring-amber-50/50 block overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform">
-                                        <Star size={120} fill="currentColor" className="text-amber-500" />
-                                    </div>
-                                    <div className="flex justify-between items-start mb-8 relative z-10">
-                                        <div className="p-5 bg-amber-100 text-amber-600 rounded-[1.5rem] group-hover:bg-amber-600 group-hover:text-white transition-all shadow-inner translate-y-0 group-hover:-translate-y-1">
-                                            <Star size={32} fill="currentColor" />
-                                        </div>
-                                        <span className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase rounded-xl tracking-widest shadow-lg shadow-amber-600/20">Módulo de Tutoría</span>
-                                    </div>
-                                    <h3 className="text-3xl font-black text-slate-800 mb-2 relative z-10 tracking-tight leading-none">{section.gradeSection}</h3>
-                                    <p className="text-slate-400 font-bold mb-8 flex items-center gap-2 relative z-10 uppercase text-xs tracking-widest">Control Socioemocional y Conducta</p>
-                                    <div className="pt-8 border-t border-amber-50 flex items-center justify-between text-amber-600 font-black text-xs uppercase tracking-[0.2em] relative z-10 group-hover:gap-4 transition-all">
-                                        <span>Acceder al Registro</span>
-                                        <ArrowRight size={18} className="translate-x-0 group-hover:translate-x-2 transition-transform" />
-                                    </div>
-                                </Link>
-
-                                <Link to={`/familia/${section.classroomId}`} className="group relative bg-white border-2 border-slate-200 rounded-[2.5rem] p-10 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer ring-8 ring-slate-50/50 block overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform">
-                                        <Heart size={120} fill="currentColor" className="text-slate-900" />
-                                    </div>
-                                    <div className="flex justify-between items-start mb-8 relative z-10">
-                                        <div className="p-5 bg-slate-100 text-slate-600 rounded-[1.5rem] group-hover:bg-slate-900 group-hover:text-white transition-all shadow-inner translate-y-0 group-hover:-translate-y-1">
-                                            <Heart size={32} />
-                                        </div>
-                                        <span className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase rounded-xl tracking-widest shadow-lg shadow-slate-900/20">Compromisos Padres</span>
-                                    </div>
-                                    <h3 className="text-3xl font-black text-slate-800 mb-2 relative z-10 tracking-tight leading-none">{section.gradeSection}</h3>
-                                    <p className="text-slate-400 font-bold mb-8 flex items-center gap-2 relative z-10 uppercase text-xs tracking-widest">Seguimiento Participación Hogar</p>
-                                    <div className="pt-8 border-t border-slate-300 flex items-center justify-between text-slate-900 font-black text-xs uppercase tracking-[0.2em] relative z-10 group-hover:gap-4 transition-all">
-                                        <span>Evaluar Familia</span>
-                                        <ArrowRight size={18} className="translate-x-0 group-hover:translate-x-2 transition-transform" />
-                                    </div>
-                                </Link>
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Upcoming Reminders (Future feature placeholder) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
