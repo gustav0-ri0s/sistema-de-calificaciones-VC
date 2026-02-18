@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, Student, UserRole, FamilyCommitment, FamilyEvaluation } from '../types';
 import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
+import MassiveConclusionModal from './MassiveConclusionModal';
 import { generateGlobalReportCard } from '../utils/pdfGenerator';
+import { supabase } from '../lib/supabase';
 
 interface GradingMatrixProps {
   role: UserRole;
@@ -43,6 +45,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   onUpdateFamilyEvaluation
 }) => {
   const [activeCommentStudent, setActiveCommentStudent] = useState<Student | null>(null);
+  const [showMassiveConclusionModal, setShowMassiveConclusionModal] = useState(false);
   const [activeConclusionData, setActiveConclusionData] = useState<{
     student: Student;
     competencyId: string;
@@ -139,6 +142,31 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     </>
   );
 
+  const handleMassiveUpdate = (
+    competencyId: string,
+    filterType: 'all_with_grade' | 'specific_grade' | 'empty_conclusion',
+    filterValue: string,
+    text: string
+  ) => {
+    students.forEach(student => {
+      const entry = grades.find(g => g.studentId === student.id && g.competencyId === competencyId);
+      const currentGrade = entry?.grade;
+      const currentConclusion = entry?.descriptiveConclusion || '';
+
+      if (!currentGrade) return; // Only update if there is a grade
+
+      let shouldUpdate = false;
+      if (filterType === 'all_with_grade') shouldUpdate = true;
+      if (filterType === 'specific_grade') shouldUpdate = currentGrade === filterValue;
+      if (filterType === 'empty_conclusion') shouldUpdate = !currentConclusion || currentConclusion.trim() === '';
+
+      if (shouldUpdate) {
+        onUpdateGrade(student.id, competencyId, currentGrade, text);
+      }
+    });
+    setShowMassiveConclusionModal(false);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       {/* Banner de bloqueo */}
@@ -156,9 +184,21 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
       {/* Indicador de Auto-guardado para Docentes */}
       {!bimestre.isLocked && role === 'Docente' && (
-        <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl self-end animate-in fade-in slide-in-from-right-4">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Cambios se guardan automáticamente</span>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {!isTutorMode && !isFamilyMode && (
+            <button
+              onClick={() => setShowMassiveConclusionModal(true)}
+              className="px-5 py-2.5 bg-institutional text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-institutional/90 transition-all flex items-center gap-2 shadow-lg shadow-institutional/20 active:scale-95 w-fit"
+            >
+              <MessageSquare size={16} />
+              Conclusiones Masivas
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl animate-in fade-in slide-in-from-right-4 self-end md:self-auto ml-auto">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Cambios se guardan automáticamente</span>
+          </div>
         </div>
       )}
 
@@ -619,6 +659,18 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
               onUpdateAppreciation(activeCommentStudent.id, val);
               setActiveCommentStudent(null);
             }}
+            isLocked={bimestre.isLocked}
+          />
+        )}
+
+        {showMassiveConclusionModal && !isTutorMode && !isFamilyMode && (
+          <MassiveConclusionModal
+            role={role}
+            course={course}
+            students={students}
+            grades={grades}
+            onClose={() => setShowMassiveConclusionModal(false)}
+            onSave={handleMassiveUpdate}
             isLocked={bimestre.isLocked}
           />
         )}
