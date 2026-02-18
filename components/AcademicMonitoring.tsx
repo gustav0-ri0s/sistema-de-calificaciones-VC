@@ -688,6 +688,63 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                       </div>
                     </div>
                   ))}
+
+                  {/* TARJETA DE TUTORÍA */}
+                  <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                    <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">TUTORÍA</h4>
+                    <span className="text-[10px] text-gray-400 block mb-4">Evaluación del Tutor</span>
+                    <div className="space-y-1">
+                      {(() => {
+                        const tutorEntry = tutorData.find(t => t.studentId === auditingStudent.id) || { comportamiento: '', tutoriaValores: '' };
+                        return [
+                          { label: 'COMPORTAMIENTO', grade: tutorEntry.comportamiento },
+                          { label: 'TUTORÍA DE VALORES', grade: tutorEntry.tutoriaValores }
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                            <span className="text-[10px] text-gray-600 font-bold">{item.label}</span>
+                            <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!item.grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
+                                item.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                  item.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                    item.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                      'bg-red-50 text-red-700 border-red-100'
+                              }`}>
+                              {item.grade || '-'}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* TARJETA DE PADRES DE FAMILIA */}
+                  <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                    <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">PADRES DE FAMILIA</h4>
+                    <span className="text-[10px] text-gray-400 block mb-4">Compromisos Familiares</span>
+                    <div className="space-y-1">
+                      {familyCommitments.length === 0 ? (
+                        <p className="text-[10px] text-gray-400 italic">No hay compromisos definidos.</p>
+                      ) : (
+                        familyCommitments.map((commitment) => {
+                          const evaluation = familyEvaluations.find(e => e.studentId === auditingStudent.id && e.commitmentId === commitment.id.toString());
+                          const grade = evaluation?.grade || '';
+
+                          return (
+                            <div key={commitment.id} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                              <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.description}>{commitment.description}</span>
+                              <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
+                                  grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                    grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                      grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                        'bg-red-50 text-red-700 border-red-100'
+                                }`}>
+                                {grade || '-'}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
