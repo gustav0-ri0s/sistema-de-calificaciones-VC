@@ -279,6 +279,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       const comps = (course.competencies || []).map((c: any) => {
         const gradeEntry = sectionGrades.find((g) => g.studentId === studentId && g.competencyId === c.id.toString());
         return {
+          id: c.id,
           name: c.name,
           isFilled: !!gradeEntry,
           grade: (gradeEntry?.grade || '') as GradeLevel,
