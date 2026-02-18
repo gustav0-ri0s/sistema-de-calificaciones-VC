@@ -142,34 +142,9 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
         </div>
       )}
 
-      {/* COMPROMISOS DE LA FAMILIA - CABECERA PREMIUM */}
+      {/* COMPROMISOS DE LA FAMILIA - LISTADO DE ÍTEMS */}
       {isFamilyMode && (
         <div className="animate-in slide-in-from-top duration-700">
-          <div className="bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 shadow-2xl overflow-hidden relative group mb-8">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-800/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-slate-700/30 transition-all duration-700"></div>
-
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-300 shadow-inner border border-slate-700">
-                  <div className="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-700/50">
-                    <Heart size={24} className="text-[#38bdf8]" />
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase leading-none mb-2">Compromisos de la Familia</h2>
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest opacity-80">Evaluación cualitativa del apoyo parental en casa.</p>
-                </div>
-              </div>
-
-              {role === 'Administrador' && (
-                <button className="flex items-center gap-3 px-8 py-4 bg-[#38bdf8] text-[#0f172a] rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-[#38bdf8]/20 hover:scale-105 active:scale-95 transition-all">
-                  <Plus size={18} />
-                  Agregar Ítem Nuevo
-                </button>
-              )}
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {familyCommitments.map((fc) => (
               <div key={fc.id} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 shadow-sm flex items-center gap-5 group hover:border-[#38bdf8] hover:shadow-xl hover:shadow-[#38bdf8]/5 transition-all duration-300">
