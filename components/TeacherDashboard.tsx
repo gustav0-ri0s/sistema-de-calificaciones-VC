@@ -163,7 +163,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             </div>
                             <div>
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Dirección Académica</p>
-                                <p className="text-sm font-bold text-slate-700">Recuerden que el cierre de notas del {selectedBimestre?.label} es el próximo Viernes.</p>
+                                <p className="text-sm font-bold text-slate-700">
+                                    Recuerden que el cierre de notas del {selectedBimestre?.label} {selectedBimestre?.end_date ? (
+                                        <>es el próximo <span className="text-institutional font-black">{new Date(selectedBimestre.end_date).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>.</>
+                                    ) : 'está próximo a finalizar.'}
+                                </p>
                             </div>
                         </div>
                         <div className="flex items-start gap-5 p-5 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:shadow-md transition-all">
