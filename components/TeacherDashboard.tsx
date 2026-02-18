@@ -7,7 +7,9 @@ import {
     Star,
     Heart,
     ArrowRight,
-    ClipboardList
+    ClipboardList,
+    Mail,
+    MessageCircle
 } from 'lucide-react';
 import { AcademicLoad, Bimestre } from '../types';
 import { Link } from 'react-router-dom';
@@ -182,16 +184,51 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-institutional p-10 rounded-[2.5rem] shadow-2xl shadow-institutional/30 text-white flex flex-col justify-between">
-                    <div>
-                        <h4 className="text-xl font-black uppercase tracking-widest mb-4">¿Necesitas Ayuda?</h4>
-                        <p className="text-white/70 font-bold text-sm leading-relaxed mb-8">
-                            Si tienes problemas con el sistema o falta algún curso en tu carga, contacta a Soporte Técnico.
-                        </p>
+                <div className="bg-institutional p-10 rounded-[2.5rem] shadow-2xl shadow-institutional/30 text-white flex flex-col justify-between relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                        <MessageCircle size={120} fill="currentColor" />
                     </div>
-                    <button className="w-full py-4 bg-white/20 hover:bg-white hover:text-institutional transition-all rounded-2xl font-black uppercase text-[10px] tracking-widest border border-white/30">
-                        Contactar Soporte
-                    </button>
+
+                    <div className="relative z-10">
+                        <h4 className="text-xl font-black uppercase tracking-widest mb-6 border-b border-white/10 pb-4">¿Necesitas Ayuda?</h4>
+
+                        <div className="space-y-6 mb-8">
+                            <div className="flex items-center gap-4 group/item">
+                                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover/item:bg-white group-hover/item:text-institutional transition-all shadow-lg shadow-black/5">
+                                    <Mail size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase opacity-60 font-black tracking-widest mb-0.5">Soporte Técnico</p>
+                                    <p className="font-bold text-sm select-all">informatica@muivc.com</p>
+                                </div>
+                            </div>
+
+                            <a
+                                href="https://w.app/vyc"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-4 group/item cursor-pointer"
+                            >
+                                <div className="w-10 h-10 rounded-2xl bg-green-500/20 flex items-center justify-center backdrop-blur-sm group-hover/item:bg-green-500 text-green-400 group-hover/item:text-white transition-all shadow-lg shadow-green-500/10 border border-green-500/30">
+                                    <MessageCircle size={18} fill="currentColor" />
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase opacity-60 font-black tracking-widest mb-0.5">WhatsApp / Celular</p>
+                                    <p className="font-bold text-sm group-hover/item:text-green-400 transition-colors">Contáctanos aquí</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <a
+                        href="https://w.app/vyc"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative z-10 w-full py-4 bg-white/10 hover:bg-white hover:text-institutional text-white transition-all rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] border border-white/20 flex items-center justify-center gap-3 group/btn"
+                    >
+                        <span>Ir a WhatsApp</span>
+                        <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </a>
                 </div>
             </div>
         </div>
