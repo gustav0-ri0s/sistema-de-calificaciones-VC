@@ -230,7 +230,7 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                 })}
 
                 {/* ACADEMIC COURSES */}
-                {academicLoad.map(course => {
+                {academicLoad.filter(c => !c.isTutor).map(course => {
                     const p = progressData[course.id];
                     return (
                         <div key={course.id} className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-8 group/row">
