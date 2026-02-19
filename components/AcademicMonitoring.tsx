@@ -121,15 +121,24 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
         if (classError) throw classError;
 
         if (classrooms) {
-          // In a real scenario, we would do a more complex query or RPC to get counts
-          // For now, we will do parallel fetching for counts to keep it simple but working
+          // 1. Get active family commitments count once
+          const { count: activeCommitsCount } = await supabase
+            .from('family_commitments')
+            .select('*', { count: 'exact', head: true })
+            .eq('active', true);
+
+          const commitCount = activeCommitsCount || 0;
+
           const statsPromises = classrooms.map(async (c) => {
             // Count students
-            const { count: studentCount } = await supabase
+            const { data: studentsInClassRaw } = await supabase
               .from('students')
-              .select('*', { count: 'exact', head: true })
+              .select('id')
               .eq('classroom_id', c.id)
-              .eq('academic_status', 'matriculado'); // Adjust status if needed
+              .eq('academic_status', 'matriculado');
+
+            const studentsInClass = studentsInClassRaw?.map(s => s.id) || [];
+            const studentCount = studentsInClass.length;
 
             // Count courses assigned to this classroom
             const { count: courseCount } = await supabase
@@ -138,38 +147,77 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
               .eq('classroom_id', c.id);
 
             // Calculate REAL progress
-            const studentsInClass = (await supabase.from('students').select('id').eq('classroom_id', c.id)).data?.map(s => s.id) || [];
-
             let realProgress = 0;
-            if (studentsInClass.length > 0) {
-              // 1. Get total expected slots (Students * Competencies)
+            if (studentCount > 0) {
+              // A. Get total unique competencies for this classroom
               const { data: classCourses } = await supabase
                 .from('course_assignments')
                 .select('curricular_areas(id, competencies(id))')
                 .eq('classroom_id', c.id);
 
-              let totalCompetenciesInClass = 0;
+              const allCompIds = new Set<number>();
               classCourses?.forEach((cc: any) => {
-                totalCompetenciesInClass += cc.curricular_areas?.competencies?.length || 0;
+                cc.curricular_areas?.competencies?.forEach((comp: any) => {
+                  allCompIds.add(comp.id);
+                });
               });
+              const totalCompetenciesInClass = allCompIds.size;
 
-              const totalSlots = studentsInClass.length * totalCompetenciesInClass;
+              // B. Calculate Total Slots
+              // Areas + Behavior (2) + Appreciation (1) + Family Commitments
+              const behaviorSlots = 2;
+              const appreciationSlot = 1;
+              const slotsPerStudent = totalCompetenciesInClass + behaviorSlots + appreciationSlot + commitCount;
+              const totalSlots = studentCount * slotsPerStudent;
 
-              // 2. Get filled grades count
-              const { data: gData, error: gError } = await supabase
+              // C. Counting filled slots
+              // 1. Area Grades
+              const { count: filledAreaGrades } = await supabase
                 .from('student_grades')
-                .select('id')
+                .select('*', { count: 'exact', head: true })
                 .in('student_id', studentsInClass)
                 .eq('bimestre_id', parseInt(bimestre.id));
 
-              if (totalSlots > 0 && gData) {
-                realProgress = Math.round((gData.length / totalSlots) * 100);
+              // 2. Behavior & Values
+              const { data: behaviorData } = await supabase
+                .from('student_behavior_grades')
+                .select('behavior_grade, values_grade')
+                .in('student_id', studentsInClass)
+                .eq('bimestre_id', parseInt(bimestre.id));
+
+              let filledBehavior = 0;
+              behaviorData?.forEach((b: any) => {
+                if (b.behavior_grade) filledBehavior++;
+                if (b.values_grade) filledBehavior++;
+              });
+
+              // 3. Family Evaluations
+              const { count: filledFamily } = await supabase
+                .from('family_evaluations')
+                .select('*', { count: 'exact', head: true })
+                .in('student_id', studentsInClass)
+                .eq('bimestre_id', parseInt(bimestre.id));
+
+              // 4. Appreciations (Comments)
+              const { count: filledAppreciations } = await supabase
+                .from('student_appreciations')
+                .select('*', { count: 'exact', head: true })
+                .in('student_id', studentsInClass)
+                .eq('bimestre_id', parseInt(bimestre.id))
+                .not('is_approved', 'is', null)
+                .not('comment', 'is', null)
+                .neq('comment', '');
+
+              const totalFilled = (filledAreaGrades || 0) + filledBehavior + (filledFamily || 0) + (filledAppreciations || 0);
+
+              if (totalSlots > 0) {
+                realProgress = Math.round((totalFilled / totalSlots) * 100);
               }
             }
 
-            // Count pending appreciations
+            // Count pending appreciations (legacy field for the cards, keep it)
             let pendingCount = 0;
-            if (studentsInClass.length > 0) {
+            if (studentCount > 0) {
               const { count } = await supabase
                 .from('student_appreciations')
                 .select('*', { count: 'exact', head: true })
@@ -183,7 +231,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
               id: c.id,
               name: `${c.grade} "${c.section}" ${c.level.charAt(0).toUpperCase() + c.level.slice(1)}`,
               level: c.level,
-              studentCount: studentCount || 0,
+              studentCount: studentCount,
               totalCourses: courseCount || 0,
               progress: realProgress,
               pendingAppreciations: pendingCount

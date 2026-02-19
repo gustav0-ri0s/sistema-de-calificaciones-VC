@@ -358,10 +358,17 @@ const App: React.FC = () => {
 
   const fetchAppreciations = async (bimestreId: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('student_appreciations')
         .select('*')
         .eq('bimestre_id', parseInt(bimestreId));
+
+      // Supervisors and Admins should not see drafts (is_approved is null)
+      if (currentUserRole !== 'Docente') {
+        query = query.not('is_approved', 'is', null);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching appreciations:', error);

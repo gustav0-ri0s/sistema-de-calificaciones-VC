@@ -48,7 +48,8 @@ const AppreciationsReview: React.FC<AppreciationsReviewProps> = ({
             )
           )
         `)
-                .eq('bimestre_id', parseInt(bimestre.id));
+                .eq('bimestre_id', parseInt(bimestre.id))
+                .not('is_approved', 'is', null);
 
             if (error) throw error;
 
