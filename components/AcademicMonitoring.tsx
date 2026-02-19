@@ -16,7 +16,7 @@ interface AcademicMonitoringProps {
   familyCommitments: FamilyCommitment[];
   familyEvaluations: FamilyEvaluation[];
   onApproveAppreciation: (sId: string) => void;
-  onUpdateAppreciation: (sId: string, comment: string) => void;
+  onUpdateAppreciation: (sId: string, comment: string, shouldSend?: boolean) => void;
   onUpdateGrade: (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => void;
 }
 
@@ -620,8 +620,8 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
           currentComment={appreciations.find(a => a.studentId === activeCommentStudent.id)?.comment || ''}
           isApproved={appreciations.find(a => a.studentId === activeCommentStudent.id)?.isApproved || false}
           onClose={() => setActiveCommentStudent(null)}
-          onSave={(val) => {
-            onUpdateAppreciation(activeCommentStudent.id, val);
+          onSave={(val, shouldSend) => {
+            onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
             setActiveCommentStudent(null);
           }}
           isLocked={bimestre.isLocked}

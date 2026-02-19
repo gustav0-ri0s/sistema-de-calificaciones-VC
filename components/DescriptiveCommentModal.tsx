@@ -32,6 +32,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
   const [isImproving, setIsImproving] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Debounced auto-save
   React.useEffect(() => {
@@ -56,10 +57,13 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
 
   const handleSendForReview = () => {
     if (isLocked) return;
-    if (window.confirm('¿Está seguro de enviar esta apreciación para revisión? Una vez enviada, el supervisor podrá verla y aprobarla.')) {
-      onSave(comment, true);
-      onClose();
-    }
+    setShowConfirm(true);
+  };
+
+  const confirmSend = () => {
+    onSave(comment, true);
+    setShowConfirm(false);
+    onClose();
   };
 
   const handleImproveWriting = async () => {
@@ -212,19 +216,58 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
 
           {isEditable && (
             <div className="flex items-center gap-3">
-              {!isApproved && (
+              {role === 'Docente' ? (
+                !isApproved && (
+                  <button
+                    disabled={isImproving || !comment.trim()}
+                    onClick={handleSendForReview}
+                    className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={16} /> Enviar para Revisión
+                  </button>
+                )
+              ) : (
                 <button
-                  disabled={isImproving || !comment.trim()}
-                  onClick={handleSendForReview}
-                  className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
+                  onClick={handleManualSave}
+                  className="px-6 py-2 bg-institutional text-white text-sm font-bold rounded-xl shadow-lg shadow-institutional/20 flex items-center gap-2 hover:bg-institutional/90 transition-all active:scale-95"
                 >
-                  <CheckCircle2 size={16} /> Enviar para Revisión
+                  <Save size={16} /> Guardar Cambios
                 </button>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]" onClick={() => setShowConfirm(false)}></div>
+          <div className="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mb-6 mx-auto">
+              <CheckCircle2 size={32} />
+            </div>
+            <h4 className="text-xl font-black text-slate-800 text-center mb-3">¿Enviar para Revisión?</h4>
+            <p className="text-sm text-slate-500 text-center mb-8 px-2 font-medium leading-relaxed">
+              Una vez enviada, el supervisor podrá verla y darle el visto bueno final. No podrá ser editada por usted mientras esté en revisión.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={confirmSend}
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+              >
+                Sí, enviar ahora
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="w-full py-4 bg-slate-50 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-100 transition-all"
+              >
+                No, seguir editando
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

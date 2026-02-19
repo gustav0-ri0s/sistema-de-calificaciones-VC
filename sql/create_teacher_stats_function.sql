@@ -23,7 +23,7 @@ DECLARE
     
     -- Loop vars
     course_rec RECORD;
-    tutor_classroom_id BIGINT;
+    t_classroom_id BIGINT;
     student_count INTEGER;
     competency_count INTEGER;
     commitment_count INTEGER;
@@ -33,11 +33,10 @@ DECLARE
 BEGIN
     -- 1. REGULAR COURSES PROGRESS
     FOR course_rec IN (
-        -- Select assignments including the new competency_id field
-        SELECT cal.id, cal.classroom_id, cal.area_id, cal.competency_id
-        FROM custom_academic_load cal
-        WHERE cal.teacher_id = p_teacher_id
-        AND cal.is_tutor = false
+        -- Select assignments from the actual table
+        SELECT id, classroom_id, area_id, competency_id
+        FROM course_assignments
+        WHERE profile_id = p_teacher_id
     ) LOOP
         -- Count students in this classroom
         SELECT count(*) INTO student_count FROM students s WHERE s.classroom_id = course_rec.classroom_id;
@@ -96,14 +95,13 @@ BEGIN
     END LOOP;
 
     -- 2. TUTOR PROGRESS
-    -- Identify the tutor classroom
-    SELECT classroom_id INTO tutor_classroom_id 
-    FROM custom_academic_load 
-    WHERE teacher_id = p_teacher_id AND is_tutor = true 
-    LIMIT 1;
+    -- Identify the tutor classroom from profiles table (matching App.tsx logic)
+    SELECT tutor_classroom_id INTO t_classroom_id 
+    FROM profiles 
+    WHERE id = p_teacher_id;
 
-    IF tutor_classroom_id IS NOT NULL THEN
-        SELECT count(*) INTO student_count FROM students WHERE classroom_id = tutor_classroom_id;
+    IF t_classroom_id IS NOT NULL THEN
+        SELECT count(*) INTO student_count FROM students WHERE classroom_id = t_classroom_id;
         
         -- 2A. Behavior and Values (2 per student)
         total_expected_tutor_grades := student_count * 2;
@@ -112,7 +110,7 @@ BEGIN
             count(CASE WHEN values_grade IS NOT NULL AND values_grade != '' THEN 1 END)
         ) INTO current_filled_tutor_grades
         FROM student_behavior_grades sbg
-        WHERE sbg.student_id IN (SELECT id FROM students WHERE classroom_id = tutor_classroom_id)
+        WHERE sbg.student_id IN (SELECT id FROM students WHERE classroom_id = t_classroom_id)
         AND sbg.bimestre_id = p_bimestre_id;
         
         -- 2B. Family Commitments
@@ -121,7 +119,7 @@ BEGIN
         
         SELECT count(*) INTO current_filled_family_grades
         FROM family_evaluations fe
-        WHERE fe.student_id IN (SELECT id FROM students WHERE classroom_id = tutor_classroom_id)
+        WHERE fe.student_id IN (SELECT id FROM students WHERE classroom_id = t_classroom_id)
         AND fe.bimestre_id = p_bimestre_id
         AND fe.grade IS NOT NULL AND fe.grade != '';
         
@@ -129,7 +127,7 @@ BEGIN
         total_students_for_appreciation := student_count;
         SELECT count(*) INTO approved_appreciations_count
         FROM student_appreciations sa
-        WHERE sa.student_id IN (SELECT id FROM students WHERE classroom_id = tutor_classroom_id)
+        WHERE sa.student_id IN (SELECT id FROM students WHERE classroom_id = t_classroom_id)
         AND sa.bimestre_id = p_bimestre_id
         AND sa.is_approved = true;
     END IF;

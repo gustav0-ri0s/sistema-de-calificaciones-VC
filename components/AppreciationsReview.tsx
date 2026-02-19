@@ -11,7 +11,7 @@ interface AppreciationsReviewProps {
     allBimestres: Bimestre[];
     onBimestreChange: (b: Bimestre) => void;
     onApproveAppreciation: (sId: string) => void;
-    onUpdateAppreciation: (sId: string, comment: string) => void;
+    onUpdateAppreciation: (sId: string, comment: string, shouldSend?: boolean) => void;
 }
 
 const AppreciationsReview: React.FC<AppreciationsReviewProps> = ({
