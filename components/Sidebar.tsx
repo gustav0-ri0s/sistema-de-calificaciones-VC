@@ -50,6 +50,12 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onLogout, tutorSections = [], i
             show: isStaff
         },
         {
+            to: '/configuracion',
+            label: 'Configuración',
+            icon: <LayoutDashboard size={20} />,
+            show: role === 'Administrador'
+        },
+        {
             to: firstTutorSection ? `/tutoria/${firstTutorSection.classroomId}` : '#',
             label: 'Tutoría',
             icon: <UserCheck size={20} />,

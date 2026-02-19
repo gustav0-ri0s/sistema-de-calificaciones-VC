@@ -140,20 +140,22 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
             const studentsInClass = studentsInClassRaw?.map(s => s.id) || [];
             const studentCount = studentsInClass.length;
 
-            // Count courses assigned to this classroom
+            // Count courses assigned to this classroom (only active ones)
             const { count: courseCount } = await supabase
               .from('course_assignments')
-              .select('*', { count: 'exact', head: true })
-              .eq('classroom_id', c.id);
+              .select('id, curricular_areas!inner(active)', { count: 'exact', head: true })
+              .eq('classroom_id', c.id)
+              .eq('curricular_areas.active', true);
 
             // Calculate REAL progress
             let realProgress = 0;
             if (studentCount > 0) {
-              // A. Get total unique competencies for this classroom
+              // A. Get total unique competencies for this classroom (only active areas)
               const { data: classCourses } = await supabase
                 .from('course_assignments')
-                .select('curricular_areas(id, competencies(id))')
-                .eq('classroom_id', c.id);
+                .select('curricular_areas!inner(id, active, competencies(id))')
+                .eq('classroom_id', c.id)
+                .eq('curricular_areas.active', true);
 
               const allCompIds = new Set<number>();
               classCourses?.forEach((cc: any) => {
@@ -171,12 +173,13 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
               const totalSlots = studentCount * slotsPerStudent;
 
               // C. Counting filled slots
-              // 1. Area Grades
+              // 1. Area Grades (only active areas)
               const { count: filledAreaGrades } = await supabase
                 .from('student_grades')
-                .select('*', { count: 'exact', head: true })
+                .select('id, competencies!inner(curricular_areas!inner(active))', { count: 'exact', head: true })
                 .in('student_id', studentsInClass)
-                .eq('bimestre_id', parseInt(bimestre.id));
+                .eq('bimestre_id', parseInt(bimestre.id))
+                .eq('competencies.curricular_areas.active', true);
 
               // 2. Behavior & Values
               const { data: behaviorData } = await supabase
@@ -201,7 +204,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
               // 4. Appreciations (Comments)
               const { count: filledAppreciations } = await supabase
                 .from('student_appreciations')
-                .select('*', { count: 'exact', head: true })
+                .select('id, profile_id', { count: 'exact', head: true })
                 .in('student_id', studentsInClass)
                 .eq('bimestre_id', parseInt(bimestre.id))
                 .not('is_approved', 'is', null)

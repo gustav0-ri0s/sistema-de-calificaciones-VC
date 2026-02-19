@@ -116,11 +116,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               .eq('classroom_id', c.id)
               .eq('academic_status', 'matriculado'); // Adjust status if needed
 
-            // Count courses assigned to this classroom
+            // Count courses assigned to this classroom (only active ones)
             const { count: courseCount } = await supabase
               .from('course_assignments')
-              .select('*', { count: 'exact', head: true })
-              .eq('classroom_id', c.id);
+              .select('id, curricular_areas!inner(active)', { count: 'exact', head: true })
+              .eq('classroom_id', c.id)
+              .eq('curricular_areas.active', true);
 
             // Calculate REAL progress
             const studentsInClass = (await supabase.from('students').select('id').eq('classroom_id', c.id)).data?.map(s => s.id) || [];
@@ -130,8 +131,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               // 1. Get total expected slots (Students * Unique Assigned Competencies)
               const { data: classAssignments } = await supabase
                 .from('course_assignments')
-                .select('area_id, competency_id, curricular_areas(competencies(id))')
-                .eq('classroom_id', c.id);
+                .select('area_id, competency_id, curricular_areas!inner(active, competencies(id))')
+                .eq('classroom_id', c.id)
+                .eq('curricular_areas.active', true);
 
               const assignedCompetencies = new Set<string>();
               classAssignments?.forEach((asgn: any) => {
@@ -230,10 +232,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               id,
               area_id,
               competency_id,
-              curricular_areas ( name, competencies (id, name) ),
+              curricular_areas!inner ( name, active, competencies (id, name) ),
               profiles ( full_name )
            `)
-          .eq('classroom_id', selectedSectionId);
+          .eq('classroom_id', selectedSectionId)
+          .eq('curricular_areas.active', true);
 
         if (cError) throw cError;
 

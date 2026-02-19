@@ -14,6 +14,7 @@ import RequireAuth from './components/RequireAuth';
 import Sidebar from './components/Sidebar';
 import TeacherCourseList from './components/TeacherCourseList';
 import TeacherDashboard from './components/TeacherDashboard';
+import AdminConfig from './components/AdminConfig';
 
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
 const ALLOWED_ROLES = ['DOCENTE', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
@@ -234,12 +235,13 @@ const App: React.FC = () => {
           classrooms (
             id, grade, section, level
           ),
-          curricular_areas (
-            id, name, level,
+          curricular_areas!inner (
+            id, name, level, active,
             competencies (id, name)
           )
         `)
-        .eq('profile_id', uid);
+        .eq('profile_id', uid)
+        .eq('curricular_areas.active', true);
 
       if (error) throw error;
 
@@ -266,27 +268,29 @@ const App: React.FC = () => {
           if (matched) filteredComps = [matched];
         }
 
-        if (grouped.has(key)) {
-          const existing = grouped.get(key)!;
-          // Merge competencies, avoiding duplicates
-          const existingIds = new Set(existing.competencies.map(c => c.id));
-          filteredComps.forEach(c => {
-            if (!existingIds.has(c.id)) {
-              existing.competencies.push(c);
-            }
-          });
-        } else {
-          grouped.set(key, {
-            id: item.id.toString(),
-            courseName: item.curricular_areas?.name || 'Curso Desconocido',
-            gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
-            isTutor: tId === Number(item.classroom_id),
-            teacherName: '',
-            classroomId: Number(item.classroom_id) || 0,
-            areaId: item.area_id || 0,
-            level: item.classrooms?.level,
-            competencies: filteredComps
-          });
+        if (filteredComps.length > 0) {
+          if (grouped.has(key)) {
+            const existing = grouped.get(key)!;
+            // Merge competencies, avoiding duplicates
+            const existingIds = new Set(existing.competencies.map(c => c.id));
+            filteredComps.forEach(c => {
+              if (!existingIds.has(c.id)) {
+                existing.competencies.push(c);
+              }
+            });
+          } else {
+            grouped.set(key, {
+              id: item.id.toString(),
+              courseName: item.curricular_areas?.name || 'Curso Desconocido',
+              gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
+              isTutor: tId === Number(item.classroom_id),
+              teacherName: '',
+              classroomId: Number(item.classroom_id) || 0,
+              areaId: item.area_id || 0,
+              level: item.classrooms?.level,
+              competencies: filteredComps
+            });
+          }
         }
       });
 
@@ -402,9 +406,10 @@ const App: React.FC = () => {
 
       const { data, error } = await supabase
         .from('student_grades')
-        .select('*')
+        .select('*, competencies!inner(id, curricular_areas!inner(active))')
         .eq('bimestre_id', parseInt(bimestreId))
-        .in('student_id', sIds);
+        .in('student_id', sIds)
+        .eq('competencies.curricular_areas.active', true);
 
       if (error) throw error;
 
@@ -856,6 +861,13 @@ const App: React.FC = () => {
                       path="/reportes"
                       element={
                         isStaff ? <ReportsModule /> : <Navigate to="/" />
+                      }
+                    />
+
+                    <Route
+                      path="/configuracion"
+                      element={
+                        currentUserRole === 'Administrador' ? <AdminConfig /> : <Navigate to="/" />
                       }
                     />
 
