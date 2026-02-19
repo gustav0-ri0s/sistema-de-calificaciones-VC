@@ -72,7 +72,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             {/* Welcome Header */}
             <div className="mb-12">
                 <h2 className="text-3xl md:text-5xl font-black text-slate-800 mb-3 tracking-tight">
-                    ¡Hola, {userName.split(' ')[0]}! 👋
+                    ¡Hola, {userName.split(' ')[0]}!
                 </h2>
                 <p className="text-slate-500 font-bold text-lg md:text-xl">
                     Este es tu resumen para el <span className="text-institutional">{selectedBimestre?.label}</span>.
