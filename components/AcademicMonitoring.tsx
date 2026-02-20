@@ -578,8 +578,9 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudiante</th>
-                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Detalle Académico</th>
+                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado de Llenado</th>
                     {!isCurrentSectionEnglish && <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Apreciación Tutor</th>}
+                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -661,14 +662,16 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                           >
                             <Search size={18} />
                           </button>
-                          <button
-                            onClick={() => onGeneratePDF(student.id)}
-                            className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm flex items-center gap-2"
-                            title="Descargar Libreta PDF"
-                          >
-                            <Download size={18} />
-                            <span className="text-[10px] font-black uppercase">Libreta</span>
-                          </button>
+                          {!isCurrentSectionEnglish && (
+                            <button
+                              onClick={() => onGeneratePDF(student.id)}
+                              className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm flex items-center gap-2"
+                              title="Descargar Libreta PDF"
+                            >
+                              <Download size={18} />
+                              <span className="text-[10px] font-black uppercase">Libreta</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -722,8 +725,16 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
             <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {(getStudentAudit(auditingStudent.id) || []).length === 0 && (
-                  <div className="md:col-span-2 text-center text-gray-400 py-4 border-2 border-dashed border-gray-100 rounded-2xl">
-                    No hay cursos académicos asignados.
+                  <div className="md:col-span-2 text-center text-gray-400 py-10 border-2 border-dashed border-gray-100 rounded-[2.5rem] flex flex-col items-center gap-3">
+                    <div className="p-4 bg-gray-50 rounded-full text-gray-300">
+                      <GraduationCap size={32} />
+                    </div>
+                    <p className="text-xs font-bold uppercase tracking-widest">No hay cursos académicos asignados.</p>
+                    <p className="text-[10px] max-w-xs leading-relaxed">
+                      {isCurrentSectionEnglish
+                        ? "Todavía no se ha asignado un docente de Inglés a este nivel en la configuración de carga académica."
+                        : "Todavía no se han asignado cursos a este salón en la configuración de carga académica."}
+                    </p>
                   </div>
                 )}
                 {(getStudentAudit(auditingStudent.id) || []).map((courseAudit, idx) => (
