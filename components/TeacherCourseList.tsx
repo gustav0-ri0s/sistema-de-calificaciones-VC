@@ -43,7 +43,7 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                 const { count: studentCount } = await supabase
                     .from('students')
                     .select('*', { count: 'exact', head: true })
-                    .eq('classroom_id', course.classroomId);
+                    .eq(course.isEnglishGroup ? 'english_classroom_id' : 'classroom_id', course.classroomId);
 
                 const totalStudents = studentCount || 0;
                 const totalCompetencies = course.competencies.length;
@@ -59,7 +59,7 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                 const { data: students } = await supabase
                     .from('students')
                     .select('id')
-                    .eq('classroom_id', course.classroomId);
+                    .eq(course.isEnglishGroup ? 'english_classroom_id' : 'classroom_id', course.classroomId);
 
                 const studentIds = students?.map(s => s.id) || [];
                 const competencyIds = course.competencies.map(c => parseInt(c.id));

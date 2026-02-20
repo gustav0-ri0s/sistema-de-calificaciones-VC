@@ -233,7 +233,7 @@ const App: React.FC = () => {
           area_id,
           competency_id,
           classrooms (
-            id, grade, section, level
+            id, grade, section, level, is_english_group
           ),
           curricular_areas!inner (
             id, name, level, active,
@@ -282,7 +282,9 @@ const App: React.FC = () => {
             grouped.set(key, {
               id: item.id.toString(),
               courseName: item.curricular_areas?.name || 'Curso Desconocido',
-              gradeSection: item.classrooms ? `${item.classrooms.grade} ${item.classrooms.section}` : 'Sección Desconocida',
+              gradeSection: item.classrooms
+                ? `${item.classrooms.grade}${item.classrooms.section ? ` "${item.classrooms.section}"` : ''}`
+                : 'Sección Desconocida',
               isTutor: tId === Number(item.classroom_id) &&
                 (item.curricular_areas?.name?.toUpperCase().includes('TUTOR') ||
                   item.curricular_areas?.name?.toUpperCase().includes('ORIENTACIÓN')),
@@ -290,6 +292,7 @@ const App: React.FC = () => {
               classroomId: Number(item.classroom_id) || 0,
               areaId: item.area_id || 0,
               level: item.classrooms?.level,
+              isEnglishGroup: item.classrooms?.is_english_group || false,
               competencies: filteredComps
             });
           }
@@ -330,7 +333,7 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchStudents = async (classroomId: number) => {
+  const fetchStudents = async (classroomId: number, isEnglishGroup?: boolean) => {
     setLoadingStudents(true);
     if (!classroomId) {
       setStudents([]);
@@ -341,8 +344,8 @@ const App: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('id, first_name, last_name, classroom_id')
-        .eq('classroom_id', classroomId)
+        .select('id, first_name, last_name, classroom_id, english_classroom_id')
+        .eq(isEnglishGroup ? 'english_classroom_id' : 'classroom_id', classroomId)
         .order('last_name', { ascending: true });
 
       if (error) throw error;
@@ -395,10 +398,13 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchGrades = async (classroomId: number, bimestreId: string, courseId?: string) => {
+  const fetchGrades = async (classroomId: number, bimestreId: string, courseId?: string, isEnglishGroup?: boolean) => {
     try {
       // Get students first to filter grades
-      const { data: sData } = await supabase.from('students').select('id').eq('classroom_id', classroomId);
+      const { data: sData } = await supabase
+        .from('students')
+        .select('id')
+        .eq(isEnglishGroup ? 'english_classroom_id' : 'classroom_id', classroomId);
       const sIds = sData?.map(s => s.id) || [];
 
       if (sIds.length === 0) {
@@ -995,8 +1001,8 @@ const CourseRouteWrapper = ({
 
   useEffect(() => {
     if (course && selectedBimestre) {
-      fetchStudents(course.classroomId);
-      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      fetchStudents(course.classroomId, course.isEnglishGroup);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id, course.isEnglishGroup);
       setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1069,8 +1075,8 @@ const TutorRouteWrapper = ({
 
   useEffect(() => {
     if (course && selectedBimestre) {
-      fetchStudents(course.classroomId);
-      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      fetchStudents(course.classroomId, false);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id, false);
       setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1143,8 +1149,8 @@ const FamilyRouteWrapper = ({
 
   useEffect(() => {
     if (course && selectedBimestre) {
-      fetchStudents(course.classroomId);
-      fetchGrades(course.classroomId, selectedBimestre.id, course.id);
+      fetchStudents(course.classroomId, false);
+      fetchGrades(course.classroomId, selectedBimestre.id, course.id, false);
       setSelectedCourse(course);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });

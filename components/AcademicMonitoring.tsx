@@ -28,6 +28,7 @@ interface SectionStats {
   totalCourses: number;
   progress: number;
   pendingAppreciations: number;
+  isEnglishGroup: boolean;
 }
 
 const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
@@ -112,7 +113,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
         // 1. Get all active classrooms
         const { data: classrooms, error: classError } = await supabase
           .from('classrooms')
-          .select('id, grade, section, level')
+          .select('id, grade, section, level, is_english_group')
           .eq('active', true)
           .order('level', { ascending: false })
           .order('grade', { ascending: true })
@@ -134,7 +135,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
             const { data: studentsInClassRaw } = await supabase
               .from('students')
               .select('id')
-              .eq('classroom_id', c.id)
+              .eq(c.is_english_group ? 'english_classroom_id' : 'classroom_id', c.id)
               .eq('academic_status', 'matriculado');
 
             const studentsInClass = studentsInClassRaw?.map(s => s.id) || [];
@@ -232,8 +233,9 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
 
             return {
               id: c.id,
-              name: `${c.grade} "${c.section}" ${c.level.charAt(0).toUpperCase() + c.level.slice(1)}`,
+              name: c.is_english_group ? c.grade : `${c.grade} "${c.section}" ${c.level.charAt(0).toUpperCase() + c.level.slice(1)}`,
               level: c.level,
+              isEnglishGroup: c.is_english_group,
               studentCount: studentCount,
               totalCourses: courseCount || 0,
               progress: realProgress,
@@ -264,11 +266,14 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
 
       setLoadingStudents(true);
       try {
+        const section = sectionsData.find(s => s.id === selectedSectionId);
+        const isEnglishGroup = section?.isEnglishGroup || false;
+
         // Get Students
         const { data: students, error: sError } = await supabase
           .from('students')
-          .select('id, first_name, last_name, classroom_id')
-          .eq('classroom_id', selectedSectionId)
+          .select('id, first_name, last_name, classroom_id, english_classroom_id')
+          .eq(isEnglishGroup ? 'english_classroom_id' : 'classroom_id', selectedSectionId)
           .order('last_name');
 
         if (sError) throw sError;

@@ -23,6 +23,7 @@ export interface AcademicLoad {
   classroomId: number; // Added for DB link
   areaId: number;     // Added for DB link
   level?: string;      // Added for Level validation (Primaria/Secundaria)
+  isEnglishGroup?: boolean; // New: detects if it's an English level group
 }
 
 export interface Bimestre {
