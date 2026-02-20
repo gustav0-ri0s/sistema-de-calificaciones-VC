@@ -15,6 +15,7 @@ import Sidebar from './components/Sidebar';
 import TeacherCourseList from './components/TeacherCourseList';
 import TeacherDashboard from './components/TeacherDashboard';
 import AdminConfig from './components/AdminConfig';
+import { generateGlobalReportCard } from './utils/pdfGenerator';
 
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
 const ALLOWED_ROLES = ['DOCENTE', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
@@ -693,7 +694,128 @@ const App: React.FC = () => {
     }
   };
 
+  const generateStudentReportPDF = async (studentId: string) => {
+    if (!selectedBimestre) {
+      alert("Por favor seleccione un bimestre primero.");
+      return;
+    }
 
+    try {
+      // 1. Fetch Student with Classrooms
+      const { data: student, error: sError } = await supabase
+        .from('students')
+        .select(`
+          id, first_name, last_name, 
+          classroom:classrooms!classroom_id(*), 
+          english_classroom:classrooms!english_classroom_id(*)
+        `)
+        .eq('id', studentId)
+        .single();
+
+      if (sError || !student) throw new Error("Estudiante no encontrado");
+
+      const classroom = (student as any).classroom;
+      const englishClassroom = (student as any).english_classroom;
+
+      const studentObj: Student = {
+        id: student.id,
+        fullName: `${student.last_name}, ${student.first_name}`,
+        classroomId: classroom?.id || 0
+      };
+
+      // 2. Fetch ALL course assignments for both classrooms
+      // Regular classroom + English classroom
+      const classIds = [classroom?.id, englishClassroom?.id].filter(Boolean);
+      const { data: assignments, error: aError } = await supabase
+        .from('course_assignments')
+        .select(`
+          id,
+          classroom_id,
+          curricular_areas!inner (
+            id, name, level, active,
+            competencies (id, name)
+          ),
+          profiles ( full_name )
+        `)
+        .in('classroom_id', classIds)
+        .eq('curricular_areas.active', true);
+
+      if (aError) throw aError;
+
+      const allCourses: AcademicLoad[] = (assignments || []).map((a: any) => ({
+        id: a.id.toString(),
+        courseName: a.curricular_areas?.name,
+        teacherName: a.profiles?.full_name || 'Sin Asignar',
+        gradeSection: a.classroom_id === classroom?.id
+          ? `${classroom?.grade} "${classroom?.section}" ${classroom?.level}`
+          : `Inglés ${englishClassroom?.section}`,
+        isTutor: false,
+        classroomId: a.classroom_id,
+        areaId: a.curricular_areas?.id,
+        competencies: a.curricular_areas?.competencies || []
+      }));
+
+      // 3. Fetch all grades for this student and bimestre
+      const { data: gradeData, error: gError } = await supabase
+        .from('student_grades')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('bimestre_id', parseInt(selectedBimestre.id));
+
+      if (gError) throw gError;
+
+      const allGrades: GradeEntry[] = (gradeData || []).map((g: any) => ({
+        studentId: g.student_id,
+        courseId: '',
+        competencyId: g.competency_id.toString(),
+        grade: g.grade as GradeLevel,
+        descriptiveConclusion: g.descriptive_conclusion || ''
+      }));
+
+      // 4. Fetch Appreciation
+      const { data: appData } = await supabase
+        .from('student_appreciations')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('bimestre_id', parseInt(selectedBimestre.id))
+        .maybeSingle();
+
+      const appreciation: AppreciationEntry = {
+        studentId,
+        comment: appData?.comment || '',
+        isApproved: appData?.is_approved || false,
+        isSent: appData?.is_approved !== null
+      };
+
+      // 5. Fetch Tutor/Behavior Data
+      const { data: tutData } = await supabase
+        .from('student_behavior_grades')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('bimestre_id', parseInt(selectedBimestre.id))
+        .maybeSingle();
+
+      const tutorValues: TutorValues = {
+        studentId,
+        comportamiento: tutData?.comportamiento || '',
+        tutoriaValores: tutData?.tutoria_valores || ''
+      };
+
+      // 6. Generate PDF
+      generateGlobalReportCard(
+        studentObj,
+        selectedBimestre,
+        allCourses,
+        allGrades,
+        appreciation,
+        tutorValues
+      );
+
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Error al generar la libreta: " + (err instanceof Error ? err.message : "Desconocido"));
+    }
+  };
 
   const userName = useMemo(() => {
     const toTitleCase = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -846,6 +968,7 @@ const App: React.FC = () => {
                             onApproveAppreciation={approveAppreciation}
                             onUpdateAppreciation={updateAppreciation}
                             onUpdateGrade={updateGrade}
+                            onGeneratePDF={generateStudentReportPDF}
                           />
                         ) : <Navigate to="/" />
                       }
@@ -917,6 +1040,7 @@ const App: React.FC = () => {
                           updateFamilyEvaluation={updateFamilyEvaluation}
                           handleBackToDashboard={handleBackToCourses}
                           loadingCourses={loadingCourses}
+                          onGeneratePDF={generateStudentReportPDF}
                         />
                       }
                     />
@@ -946,6 +1070,7 @@ const App: React.FC = () => {
                           updateFamilyEvaluation={updateFamilyEvaluation}
                           handleBackToDashboard={handleBackToCourses}
                           loadingCourses={loadingCourses}
+                          onGeneratePDF={generateStudentReportPDF}
                         />
                       }
                     />
@@ -975,6 +1100,7 @@ const App: React.FC = () => {
                           updateFamilyEvaluation={updateFamilyEvaluation}
                           handleBackToDashboard={handleBackToCourses}
                           loadingCourses={loadingCourses}
+                          onGeneratePDF={generateStudentReportPDF}
                         />
                       }
                     />
@@ -996,7 +1122,8 @@ const App: React.FC = () => {
 const CourseRouteWrapper = ({
   selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses,
+  onGeneratePDF
 }: any) => {
   const { id } = useParams<{ id: string }>();
   const course = academicLoad.find((c: any) => c.id === id);
@@ -1061,6 +1188,7 @@ const CourseRouteWrapper = ({
           onApproveAppreciation={approveAppreciation}
           onUpdateTutorData={updateTutorData}
           onUpdateFamilyEvaluation={updateFamilyEvaluation}
+          onGeneratePDF={onGeneratePDF}
         />
       ) : null}
     </div>
@@ -1070,7 +1198,8 @@ const CourseRouteWrapper = ({
 const TutorRouteWrapper = ({
   selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses,
+  onGeneratePDF
 }: any) => {
   const { classroomId } = useParams<{ classroomId: string }>();
   const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
@@ -1135,6 +1264,7 @@ const TutorRouteWrapper = ({
           onApproveAppreciation={approveAppreciation}
           onUpdateTutorData={updateTutorData}
           onUpdateFamilyEvaluation={updateFamilyEvaluation}
+          onGeneratePDF={onGeneratePDF}
         />
       ) : null}
     </div>
@@ -1144,7 +1274,8 @@ const TutorRouteWrapper = ({
 const FamilyRouteWrapper = ({
   selectedCourse, setSelectedCourse, academicLoad, fetchStudents, fetchGrades, loadingStudents, selectedBimestre,
   currentUserRole, students, grades, appreciations, tutorData, familyCommitments, familyEvaluations,
-  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses
+  updateGrade, updateAppreciation, approveAppreciation, updateTutorData, updateFamilyEvaluation, handleBackToDashboard, loadingCourses,
+  onGeneratePDF
 }: any) => {
   const { classroomId } = useParams<{ classroomId: string }>();
   const course = academicLoad.find((c: any) => c.classroomId.toString() === classroomId && c.isTutor);
@@ -1209,6 +1340,7 @@ const FamilyRouteWrapper = ({
           onApproveAppreciation={approveAppreciation}
           onUpdateTutorData={updateTutorData}
           onUpdateFamilyEvaluation={updateFamilyEvaluation}
+          onGeneratePDF={onGeneratePDF}
         />
       ) : null}
     </div>

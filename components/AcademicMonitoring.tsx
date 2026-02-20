@@ -18,6 +18,7 @@ interface AcademicMonitoringProps {
   onApproveAppreciation: (sId: string) => void;
   onUpdateAppreciation: (sId: string, comment: string, shouldSend?: boolean) => void;
   onUpdateGrade: (studentId: string, competencyId: string, grade: GradeLevel, descriptiveConclusion?: string) => void;
+  onGeneratePDF: (studentId: string) => void;
 }
 
 interface SectionStats {
@@ -43,7 +44,8 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
   tutorData,
   familyCommitments,
   familyEvaluations,
-  onUpdateGrade
+  onUpdateGrade,
+  onGeneratePDF
 }) => {
   useEffect(() => {
     console.log("AcademicMonitoring Data:", {
@@ -658,6 +660,14 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                             title="Ver Detalle de Llenado"
                           >
                             <Search size={18} />
+                          </button>
+                          <button
+                            onClick={() => onGeneratePDF(student.id)}
+                            className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm flex items-center gap-2"
+                            title="Descargar Libreta PDF"
+                          >
+                            <Download size={18} />
+                            <span className="text-[10px] font-black uppercase">Libreta</span>
                           </button>
                         </td>
                       </tr>

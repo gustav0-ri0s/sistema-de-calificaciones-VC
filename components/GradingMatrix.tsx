@@ -24,6 +24,7 @@ interface GradingMatrixProps {
   onApproveAppreciation: (sId: string) => void;
   onUpdateTutorData: (sId: string, field: 'comportamiento' | 'tutoriaValores', value: string) => void;
   onUpdateFamilyEvaluation: (sId: string, fcId: string, grade: GradeLevel) => void;
+  onGeneratePDF: (studentId: string) => void;
 }
 
 const GradingMatrix: React.FC<GradingMatrixProps> = ({
@@ -42,7 +43,8 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   onUpdateAppreciation,
   onApproveAppreciation,
   onUpdateTutorData,
-  onUpdateFamilyEvaluation
+  onUpdateFamilyEvaluation,
+  onGeneratePDF
 }) => {
   const [activeCommentStudent, setActiveCommentStudent] = useState<Student | null>(null);
   const [showMassiveConclusionModal, setShowMassiveConclusionModal] = useState(false);
@@ -97,10 +99,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   };
 
   const handlePdfDownload = (student: Student) => {
-    const appEntry = getAppreciation(student.id);
-    const tutData = getTutorData(student.id);
-    const stdGrades = grades.filter(g => g.studentId === student.id);
-    generateGlobalReportCard(student, bimestre, [course], stdGrades, appEntry, tutData);
+    onGeneratePDF(student.id);
   };
 
   const getGradeColorClass = (grade: GradeLevel) => {
@@ -441,7 +440,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                             )}
                             <span className="truncate">{student.fullName}</span>
                           </div>
-                          {(role === 'Supervisor' || role === 'Administrador') && (
+                          {(role === 'Supervisor' || role === 'Administrador' || isTutorMode) && (
                             <button
                               onClick={() => handlePdfDownload(student)}
                               className="p-3 text-rose-500 opacity-0 group-hover/row:opacity-100 hover:bg-rose-50 rounded-2xl transition-all"
