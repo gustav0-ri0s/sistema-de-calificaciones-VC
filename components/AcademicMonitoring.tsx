@@ -83,6 +83,10 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
   } | null>(null);
   const [sectionCourses, setSectionCourses] = useState<AcademicLoad[]>([]); // To audit specific courses
 
+  // Computed filtered current section info
+  const currentSection = selectedSectionId ? sectionsData.find(s => s.id === selectedSectionId) : null;
+  const isCurrentSectionEnglish = currentSection?.isEnglishGroup || false;
+
   // Filter State
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed' | 'incomplete'>('all');
 
@@ -572,9 +576,8 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estudiante</th>
-                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado Auditoría</th>
-                    <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Apreciación Tutor</th>
                     <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Detalle Académico</th>
+                    {!isCurrentSectionEnglish && <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Apreciación Tutor</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -595,57 +598,59 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                             </div>
                           </div>
                         </td>
-                        <td className="p-6">
-                          <div className="flex items-center justify-center gap-6">
-                            <button
-                              onClick={() => setActiveCommentStudent(student)}
-                              className={`p-3 px-5 rounded-2xl transition-all border-2 flex flex-col items-center ${appreciation.comment.trim() !== ''
-                                ? 'bg-institutional/10 border-institutional text-institutional hover:bg-institutional hover:text-white shadow-lg shadow-institutional/20'
-                                : 'bg-white border-gray-200 text-gray-300 hover:border-institutional hover:text-institutional'
-                                }`}
-                            >
-                              <MessageSquare size={18} />
-                              <span className="text-[9px] font-black uppercase mt-1">
-                                {appreciation.comment.trim() !== '' ? 'Editar' : 'Redactar'}
-                              </span>
-                            </button>
+                        {!isCurrentSectionEnglish && (
+                          <td className="p-6">
+                            <div className="flex items-center justify-center gap-6">
+                              <button
+                                onClick={() => setActiveCommentStudent(student)}
+                                className={`p-3 px-5 rounded-2xl transition-all border-2 flex flex-col items-center ${appreciation.comment.trim() !== ''
+                                  ? 'bg-institutional/10 border-institutional text-institutional hover:bg-institutional hover:text-white shadow-lg shadow-institutional/20'
+                                  : 'bg-white border-gray-200 text-gray-300 hover:border-institutional hover:text-institutional'
+                                  }`}
+                              >
+                                <MessageSquare size={18} />
+                                <span className="text-[9px] font-black uppercase mt-1">
+                                  {appreciation.comment.trim() !== '' ? 'Editar' : 'Redactar'}
+                                </span>
+                              </button>
 
-                            {appreciation.comment.trim() !== '' && (
-                              <div className="flex flex-col items-center gap-1.5">
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
-                                  }`}>
-                                  {appreciation.isApproved ? <CheckCircle2 size={16} /> : <Check size={16} />}
-                                  <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                              {appreciation.comment.trim() !== '' && (
+                                <div className="flex flex-col items-center gap-1.5">
+                                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${appreciation.isApproved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-slate-50 border-slate-200 text-slate-400'
+                                    }`}>
+                                    {appreciation.isApproved ? <CheckCircle2 size={16} /> : <Check size={16} />}
+                                    <span className="text-[10px] font-black uppercase">{appreciation.isApproved ? 'Aprobado' : 'Pendiente'}</span>
+                                  </div>
+                                  {!bimestre.isLocked && (
+                                    <button
+                                      onClick={() => {
+                                        // Call parent handler
+                                        onApproveAppreciation(student.id);
+
+                                        // Optimistically update local stats
+                                        setSectionsData(prev => prev.map(section => {
+                                          if (section.id === selectedSectionId) {
+                                            return {
+                                              ...section,
+                                              pendingAppreciations: appreciation.isApproved
+                                                ? section.pendingAppreciations + 1 // Currently approved -> unapproving -> add to pending
+                                                : Math.max(0, section.pendingAppreciations - 1) // Currently pending -> approving -> remove from pending
+                                            };
+                                          }
+                                          return section;
+                                        }));
+                                      }}
+                                      className={`p-2 rounded-lg text-[9px] font-black uppercase border-2 transition-all ${appreciation.isApproved ? 'bg-rose-50 text-rose-500 border-rose-200' : 'bg-green-600 text-white border-green-700 shadow-md active:scale-95'
+                                        }`}
+                                    >
+                                      {appreciation.isApproved ? 'Quitar Visto' : 'Dar Visto Bueno'}
+                                    </button>
+                                  )}
                                 </div>
-                                {!bimestre.isLocked && (
-                                  <button
-                                    onClick={() => {
-                                      // Call parent handler
-                                      onApproveAppreciation(student.id);
-
-                                      // Optimistically update local stats
-                                      setSectionsData(prev => prev.map(section => {
-                                        if (section.id === selectedSectionId) {
-                                          return {
-                                            ...section,
-                                            pendingAppreciations: appreciation.isApproved
-                                              ? section.pendingAppreciations + 1 // Currently approved -> unapproving -> add to pending
-                                              : Math.max(0, section.pendingAppreciations - 1) // Currently pending -> approving -> remove from pending
-                                          };
-                                        }
-                                        return section;
-                                      }));
-                                    }}
-                                    className={`p-2 rounded-lg text-[9px] font-black uppercase border-2 transition-all ${appreciation.isApproved ? 'bg-rose-50 text-rose-500 border-rose-200' : 'bg-green-600 text-white border-green-700 shadow-md active:scale-95'
-                                      }`}
-                                  >
-                                    {appreciation.isApproved ? 'Quitar Visto' : 'Dar Visto Bueno'}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </td>
+                              )}
+                            </div>
+                          </td>
+                        )}
                         <td className="p-6 flex items-center justify-center gap-3">
                           <button
                             onClick={() => setAuditingStudent(student)}
@@ -762,62 +767,66 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                   </div>
                 ))}
 
-                {/* TARJETA DE TUTORÍA */}
-                <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
-                  <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">TUTORÍA</h4>
-                  <span className="text-[10px] text-gray-400 block mb-4">Evaluación del Tutor</span>
-                  <div className="space-y-1">
-                    {(() => {
-                      const tutorEntry = tutorData.find(t => String(t.studentId) === String(auditingStudent.id)) || { comportamiento: '', tutoriaValores: '' };
-                      return [
-                        { label: 'COMPORTAMIENTO', grade: tutorEntry.comportamiento },
-                        { label: 'TUTORÍA DE VALORES', grade: tutorEntry.tutoriaValores }
-                      ].map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                          <span className="text-[10px] text-gray-600 font-bold">{item.label}</span>
-                          <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!item.grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
-                            item.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                              item.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
-                                item.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                  'bg-red-50 text-red-700 border-red-100'
-                            }`}>
-                            {item.grade || '-'}
-                          </div>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
-
-                {/* TARJETA DE PADRES DE FAMILIA */}
-                <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
-                  <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">PADRES DE FAMILIA</h4>
-                  <span className="text-[10px] text-gray-400 block mb-4">Compromisos Familiares</span>
-                  <div className="space-y-1">
-                    {familyCommitments.length === 0 ? (
-                      <p className="text-[10px] text-gray-400 italic">No hay compromisos definidos.</p>
-                    ) : (
-                      familyCommitments.map((commitment) => {
-                        const evaluation = familyEvaluations.find(e => String(e.studentId) === String(auditingStudent.id) && String(e.commitmentId) === String(commitment.id));
-                        const grade = evaluation?.grade || '';
-
-                        return (
-                          <div key={commitment.id} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                            <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.text}>{commitment.text}</span>
-                            <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
-                              grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
-                                  grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                    'bg-red-50 text-red-700 border-red-100'
-                              }`}>
-                              {grade || '-'}
+                {!isCurrentSectionEnglish && (
+                  <>
+                    {/* TARJETA DE TUTORÍA */}
+                    <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                      <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">TUTORÍA</h4>
+                      <span className="text-[10px] text-gray-400 block mb-4">Evaluación del Tutor</span>
+                      <div className="space-y-1">
+                        {(() => {
+                          const tutorEntry = tutorData.find(t => String(t.studentId) === String(auditingStudent.id)) || { comportamiento: '', tutoriaValores: '' };
+                          return [
+                            { label: 'COMPORTAMIENTO', grade: tutorEntry.comportamiento },
+                            { label: 'TUTORÍA DE VALORES', grade: tutorEntry.tutoriaValores }
+                          ].map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                              <span className="text-[10px] text-gray-600 font-bold">{item.label}</span>
+                              <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!item.grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
+                                item.grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                  item.grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                    item.grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                      'bg-red-50 text-red-700 border-red-100'
+                                }`}>
+                                {item.grade || '-'}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* TARJETA DE PADRES DE FAMILIA */}
+                    <div className="p-6 rounded-[2rem] border-2 border-gray-100 bg-gray-50/50">
+                      <h4 className="font-black text-gray-800 uppercase text-xs tracking-tight mb-2">PADRES DE FAMILIA</h4>
+                      <span className="text-[10px] text-gray-400 block mb-4">Compromisos Familiares</span>
+                      <div className="space-y-1">
+                        {familyCommitments.length === 0 ? (
+                          <p className="text-[10px] text-gray-400 italic">No hay compromisos definidos.</p>
+                        ) : (
+                          familyCommitments.map((commitment) => {
+                            const evaluation = familyEvaluations.find(e => String(e.studentId) === String(auditingStudent.id) && String(e.commitmentId) === String(commitment.id));
+                            const grade = evaluation?.grade || '';
+
+                            return (
+                              <div key={commitment.id} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                <span className="text-[10px] text-gray-600 font-bold max-w-[70%] truncate" title={commitment.text}>{commitment.text}</span>
+                                <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${!grade ? 'bg-gray-50 text-gray-300 border-gray-100' :
+                                  grade === 'AD' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                    grade === 'A' ? 'bg-green-50 text-green-700 border-green-100' :
+                                      grade === 'B' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                        'bg-red-50 text-red-700 border-red-100'
+                                  }`}>
+                                  {grade || '-'}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
