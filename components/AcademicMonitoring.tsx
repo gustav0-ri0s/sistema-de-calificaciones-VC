@@ -233,7 +233,9 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
 
             return {
               id: c.id,
-              name: c.is_english_group ? c.grade : `${c.grade} "${c.section}" ${c.level.charAt(0).toUpperCase() + c.level.slice(1)}`,
+              name: c.is_english_group
+                ? `Inglés ${c.section} - ${c.grade}`
+                : `${c.grade} "${c.section}" ${c.level.charAt(0).toUpperCase() + c.level.slice(1)}`,
               level: c.level,
               isEnglishGroup: c.is_english_group,
               studentCount: studentCount,

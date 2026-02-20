@@ -283,7 +283,9 @@ const App: React.FC = () => {
               id: item.id.toString(),
               courseName: item.curricular_areas?.name || 'Curso Desconocido',
               gradeSection: item.classrooms
-                ? `${item.classrooms.grade}${item.classrooms.section ? ` "${item.classrooms.section}"` : ''}`
+                ? (item.classrooms.is_english_group
+                  ? `Inglés ${item.classrooms.section} (${item.classrooms.grade})`
+                  : `${item.classrooms.grade}${item.classrooms.section ? ` "${item.classrooms.section}"` : ''}`)
                 : 'Sección Desconocida',
               isTutor: tId === Number(item.classroom_id) &&
                 (item.curricular_areas?.name?.toUpperCase().includes('TUTOR') ||
