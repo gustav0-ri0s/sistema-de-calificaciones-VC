@@ -1,6 +1,6 @@
 
 export type GradeLevel = 'AD' | 'A' | 'B' | 'C' | 'D' | '';
-export type UserRole = 'Docente' | 'Supervisor' | 'Administrador';
+export type UserRole = 'Docente' | 'Docente_Ingles' | 'Supervisor' | 'Administrador';
 
 export interface Competency {
   id: string;

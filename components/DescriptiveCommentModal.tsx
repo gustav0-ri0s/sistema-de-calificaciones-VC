@@ -143,7 +143,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
             placeholder="Escriba aquí el progreso del estudiante..."
           ></textarea>
 
-          {isSent && !isApproved && role === 'Docente' && isEditable && (
+          {isSent && !isApproved && (role === 'Docente' || role === 'Docente_Ingles') && isEditable && (
             <div className="mt-4 flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
               <Info size={16} className="text-blue-500 shrink-0" />
               <p className="text-[11px] text-blue-700 leading-tight">
@@ -152,7 +152,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
             </div>
           )}
 
-          {isApproved && role === 'Docente' && isEditable && (
+          {isApproved && (role === 'Docente' || role === 'Docente_Ingles') && isEditable && (
             <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2">
               <ShieldAlert size={16} className="text-amber-500 shrink-0" />
               <p className="text-[11px] text-amber-700 leading-tight">
@@ -216,7 +216,7 @@ const DescriptiveCommentModal: React.FC<DescriptiveCommentModalProps> = ({
 
           {isEditable && (
             <div className="flex items-center gap-3">
-              {role === 'Docente' ? (
+              {(role === 'Docente' || role === 'Docente_Ingles') ? (
                 !isApproved && (
                   <button
                     disabled={isImproving || !comment.trim()}

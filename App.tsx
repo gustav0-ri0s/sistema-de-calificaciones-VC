@@ -17,8 +17,12 @@ import TeacherDashboard from './components/TeacherDashboard';
 import AdminConfig from './components/AdminConfig';
 import { generateGlobalReportCard } from './utils/pdfGenerator';
 
-const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
-const ALLOWED_ROLES = ['DOCENTE', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL || 'https://portal-vc-academico.vercel.app';
+const ALLOWED_ROLES = ['DOCENTE', 'DOCENTE_INGLES', 'SUPERVISOR', 'ADMIN', 'SUBDIRECTOR', 'AUXILIAR', 'SECRETARIA'];
+
+const IDLE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours in ms
+const CHECK_INTERVAL = 60 * 1000; // 1 minute in ms
+const ACTIVITY_KEY = 'vc_last_activity';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -80,8 +84,50 @@ const App: React.FC = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  // Idle Timeout Logic
+  useEffect(() => {
+    if (!userId) return;
+
+    const checkIdleTimeout = () => {
+      const lastActivity = localStorage.getItem(ACTIVITY_KEY);
+      if (lastActivity) {
+        const timeSinceLastActivity = Date.now() - parseInt(lastActivity, 10);
+        if (timeSinceLastActivity > IDLE_TIMEOUT) {
+          console.warn('Idle timeout reached, signing out...');
+          handleLogout();
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (checkIdleTimeout()) return;
+
+    const updateActivity = () => {
+      localStorage.setItem(ACTIVITY_KEY, Date.now().toString());
+    };
+
+    updateActivity();
+
+    const events = ['mousedown', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+    events.forEach(eventName => {
+      window.addEventListener(eventName, updateActivity);
+    });
+
+    const interval = setInterval(checkIdleTimeout, CHECK_INTERVAL);
+
+    return () => {
+      events.forEach(eventName => {
+        window.removeEventListener(eventName, updateActivity);
+      });
+      clearInterval(interval);
+    };
+  }, [userId]);
 
   const [userFullName, setUserFullName] = useState<string>('');
 
@@ -150,7 +196,7 @@ const App: React.FC = () => {
   const [progressStats, setProgressStats] = useState<any>(null); // New State
 
   const fetchProgressStats = async () => {
-    if (!selectedBimestre || !userId || currentUserRole !== 'Docente') {
+    if (!selectedBimestre || !userId || (currentUserRole !== 'Docente' && currentUserRole !== 'Docente_Ingles')) {
       return;
     }
     // console.log('Fetching stats for', userId, selectedBimestre.id);
@@ -202,6 +248,7 @@ const App: React.FC = () => {
 
       if (error) {
         console.error('Error fetching profile:', error);
+        handleLogout();
         return;
       }
 
@@ -210,9 +257,10 @@ const App: React.FC = () => {
         let appRole: UserRole = 'Docente';
         if (profile.role === 'admin' || profile.role === 'subdirector') appRole = 'Administrador';
         else if (profile.role === 'supervisor') appRole = 'Supervisor';
+        else if (profile.role === 'docente_ingles') appRole = 'Docente_Ingles';
         setCurrentUserRole(appRole);
 
-        if (appRole === 'Docente') {
+        if (appRole === 'Docente' || appRole === 'Docente_Ingles') {
           fetchAcademicLoad(uid, profile.tutor_classroom_id);
         }
       }
@@ -376,7 +424,7 @@ const App: React.FC = () => {
         .eq('bimestre_id', parseInt(bimestreId));
 
       // Supervisors and Admins should not see drafts (is_approved is null)
-      if (currentUserRole !== 'Docente') {
+      if (currentUserRole !== 'Docente' && currentUserRole !== 'Docente_Ingles') {
         query = query.not('is_approved', 'is', null);
       }
 
@@ -499,8 +547,18 @@ const App: React.FC = () => {
   }, [academicLoad]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // window.location.href = PORTAL_URL; // let auth listener handle it
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error during signOut:', err);
+    }
+    setUserId(null);
+    setCurrentUserRole(null);
+    setUserFullName('');
+    setAcademicLoad([]);
+    setBimestres([]);
+    localStorage.removeItem(ACTIVITY_KEY);
+    window.location.href = PORTAL_URL;
   };
 
   const handleCourseSelect = async (course: AcademicLoad) => {
@@ -592,7 +650,7 @@ const App: React.FC = () => {
 
     // Determine is_approved for DB
     let nextApprovedState: boolean | null = null;
-    if (currentUserRole === 'Docente') {
+    if (currentUserRole === 'Docente' || currentUserRole === 'Docente_Ingles') {
       nextApprovedState = shouldSend ? false : null;
     }
 
@@ -602,8 +660,8 @@ const App: React.FC = () => {
       return [...filtered, {
         studentId,
         comment,
-        isApproved: currentUserRole === 'Docente' ? false : (existing ? existing.isApproved : false),
-        isSent: currentUserRole === 'Docente' ? shouldSend : (existing ? existing.isSent : false)
+        isApproved: (currentUserRole === 'Docente' || currentUserRole === 'Docente_Ingles') ? false : (existing ? existing.isApproved : false),
+        isSent: (currentUserRole === 'Docente' || currentUserRole === 'Docente_Ingles') ? shouldSend : (existing ? existing.isSent : false)
       }];
     });
 
@@ -618,7 +676,7 @@ const App: React.FC = () => {
         updated_at: new Date().toISOString()
       };
 
-      if (currentUserRole === 'Docente') {
+      if (currentUserRole === 'Docente' || currentUserRole === 'Docente_Ingles') {
         updateData.is_approved = nextApprovedState;
       }
 

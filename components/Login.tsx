@@ -41,6 +41,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           let appRole: UserRole = 'Docente';
           if (profile.role === 'admin' || profile.role === 'subdirector') appRole = 'Administrador';
           else if (profile.role === 'supervisor') appRole = 'Supervisor';
+          else if (profile.role === 'docente_ingles') appRole = 'Docente_Ingles';
 
           onLogin(appRole, email);
         }

@@ -13,7 +13,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ role, onLogout, tutorSections = [], isOpen = false, onClose }) => {
     const location = useLocation();
-    const isDocente = role === 'Docente';
+    const isDocente = role === 'Docente' || role === 'Docente_Ingles';
     const isStaff = role === 'Supervisor' || role === 'Administrador';
 
     const firstTutorSection = tutorSections.length > 0 ? tutorSections[0] : null;

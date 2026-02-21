@@ -179,7 +179,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
       )}
 
       {/* Indicador de Auto-guardado para Docentes */}
-      {!bimestre.isLocked && role === 'Docente' && (
+      {!bimestre.isLocked && (role === 'Docente' || role === 'Docente_Ingles') && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {!isTutorMode && !isFamilyMode && (
             <button
