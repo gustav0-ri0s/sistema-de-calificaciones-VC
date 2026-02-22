@@ -558,7 +558,7 @@ const App: React.FC = () => {
     setAcademicLoad([]);
     setBimestres([]);
     localStorage.removeItem(ACTIVITY_KEY);
-    window.location.href = PORTAL_URL;
+    window.location.href = `${PORTAL_URL}?view=login`;
   };
 
   const handleCourseSelect = async (course: AcademicLoad) => {

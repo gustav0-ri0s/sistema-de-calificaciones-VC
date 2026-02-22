@@ -25,7 +25,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children, allowedRoles }) => 
 
                 if (!session) {
                     const returnTo = encodeURIComponent(window.location.href);
-                    window.location.href = `${PORTAL_URL}/login?returnTo=${returnTo}`;
+                    window.location.href = `${PORTAL_URL}?view=login&returnTo=${returnTo}`;
                     return;
                 }
 
@@ -73,7 +73,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children, allowedRoles }) => 
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
-        window.location.href = PORTAL_URL;
+        window.location.href = `${PORTAL_URL}?view=login`;
     };
 
     if (isLoading) {
