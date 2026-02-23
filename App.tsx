@@ -593,11 +593,9 @@ const App: React.FC = () => {
         const { error } = await supabase
           .from('student_grades')
           .delete()
-          .match({
-            student_id: studentId,
-            competency_id: parseInt(compIdStr),
-            bimestre_id: parseInt(selectedBimestre.id)
-          });
+          .eq('student_id', studentId)
+          .eq('competency_id', parseInt(compIdStr))
+          .eq('bimestre_id', parseInt(selectedBimestre.id));
         if (error) throw error;
       } else {
         const { error } = await supabase.from('student_grades').upsert({
@@ -629,19 +627,31 @@ const App: React.FC = () => {
 
     if (!selectedBimestre) return;
 
-    supabase.from('family_evaluations').upsert({
-      student_id: studentId,
-      commitment_id: parseInt(commitmentId),
-      bimestre_id: parseInt(selectedBimestre.id),
-      grade: grade,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'student_id, commitment_id, bimestre_id' }).then(({ error }) => {
-      if (error) {
-        console.error('Error saving family evaluation:', error);
-      } else {
-        fetchProgressStats();
-      }
-    });
+    if (grade === '') {
+      supabase.from('family_evaluations')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('commitment_id', parseInt(commitmentId))
+        .eq('bimestre_id', parseInt(selectedBimestre.id))
+        .then(({ error }) => {
+          if (error) console.error('Error deleting family evaluation:', error);
+          else fetchProgressStats();
+        });
+    } else {
+      supabase.from('family_evaluations').upsert({
+        student_id: studentId,
+        commitment_id: parseInt(commitmentId),
+        bimestre_id: parseInt(selectedBimestre.id),
+        grade: grade,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'student_id, commitment_id, bimestre_id' }).then(({ error }) => {
+        if (error) {
+          console.error('Error saving family evaluation:', error);
+        } else {
+          fetchProgressStats();
+        }
+      });
+    }
   };
 
   const updateAppreciation = async (studentId: string, comment: string, shouldSend: boolean = false) => {
