@@ -239,6 +239,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           .from('course_assignments')
           .select(`
               id,
+              profile_id,
               area_id,
               competency_id,
               classroom_id,

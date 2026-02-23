@@ -305,25 +305,62 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
           .from('course_assignments')
           .select(`
               id,
+              profile_id,
+              area_id,
+              competency_id,
               classroom_id,
-              curricular_areas ( name, competencies (id, name) ),
+              curricular_areas!inner ( name, active, competencies (id, name) ),
               profiles ( full_name )
            `)
-          .in('classroom_id', relevantClassroomIds);
+          .in('classroom_id', relevantClassroomIds)
+          .eq('curricular_areas.active', true);
 
         if (cError) throw cError;
 
-        const mappedCourses: AcademicLoad[] = (courses || []).map((c: any) => ({
-          id: c.id.toString(),
-          courseName: c.curricular_areas?.name,
-          teacherName: c.profiles?.full_name || 'Sin Asignar',
-          competencies: c.curricular_areas?.competencies || [],
-          // Required fields for AcademicLoad
-          gradeSection: selectedSectionName || '',
-          isTutor: false,
-          classroomId: c.classroom_id || 0,
-          areaId: 0
-        }));
+        // Group assignments by teacher, area, and classroom to handle multi-competency assignments
+        const grouped = new Map<string, AcademicLoad>();
+
+        courses?.forEach((item: any) => {
+          const profileId = item.profile_id || item.profiles?.id || 'unassigned';
+          const key = `${item.classroom_id}-${profileId}-${item.area_id}`;
+          const allAreaComps = item.curricular_areas?.competencies?.map((c: any) => ({
+            id: c.id.toString(),
+            name: c.name
+          })) || [];
+
+          // Determine competencies for this specific assignment row
+          let filteredComps: any[] = [];
+          if (item.competency_id === null) {
+            filteredComps = allAreaComps;
+          } else {
+            const matched = allAreaComps.find((c: any) => c.id.toString() === item.competency_id.toString());
+            if (matched) filteredComps = [matched];
+          }
+
+          if (grouped.has(key)) {
+            const existing = grouped.get(key)!;
+            const existingIds = new Set(existing.competencies.map(c => c.id));
+            filteredComps.forEach(c => {
+              if (!existingIds.has(c.id)) {
+                existing.competencies.push(c);
+              }
+            });
+          } else {
+            grouped.set(key, {
+              id: item.id.toString(),
+              courseName: item.curricular_areas?.name,
+              teacherName: item.profiles?.full_name || 'Sin Asignar',
+              competencies: filteredComps,
+              // Required fields for AcademicLoad
+              gradeSection: selectedSectionName || '',
+              isTutor: false,
+              classroomId: Number(item.classroom_id) || 0,
+              areaId: item.area_id || 0
+            });
+          }
+        });
+
+        const mappedCourses = Array.from(grouped.values());
         setSectionCourses(mappedCourses);
 
         // Get Grades for this section
