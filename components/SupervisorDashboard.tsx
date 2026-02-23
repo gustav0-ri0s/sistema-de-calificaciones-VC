@@ -212,18 +212,26 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         // Get Students
         const { data: students, error: sError } = await supabase
           .from('students')
-          .select('id, first_name, last_name, classroom_id')
+          .select('id, first_name, last_name, classroom_id, english_classroom_id')
           .eq('classroom_id', selectedSectionId)
           .order('last_name');
 
         if (sError) throw sError;
 
         const mappedStudents = (students || []).map(s => ({
+          ...s,
           id: s.id,
           fullName: `${s.last_name}, ${s.first_name}`,
-          classroomId: s.classroom_id || 0
+          classroomId: s.classroom_id || 0,
+          englishClassroomId: s.english_classroom_id || 0
         }));
         setSectionStudents(mappedStudents);
+
+        // Find all unique classroom_ids we need courses for (this section + any english sections these students belong to)
+        const relevantClassroomIds = Array.from(new Set([
+          selectedSectionId as number,
+          ...mappedStudents.map(s => s.englishClassroomId).filter(id => id > 0)
+        ]));
 
         // Get Courses for Audit
         const { data: courses, error: cError } = await supabase
@@ -232,20 +240,21 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               id,
               area_id,
               competency_id,
+              classroom_id,
               curricular_areas!inner ( name, active, competencies (id, name) ),
               profiles ( full_name )
            `)
-          .eq('classroom_id', selectedSectionId)
+          .in('classroom_id', relevantClassroomIds)
           .eq('curricular_areas.active', true);
 
         if (cError) throw cError;
 
-        // Group assignments by teacher and area to handle multi-competency assignments
+        // Group assignments by teacher, area, and classroom to handle multi-competency assignments
         const grouped = new Map<string, AcademicLoad>();
 
         courses?.forEach((item: any) => {
           const profileId = item.profile_id || item.profiles?.id || 'unassigned';
-          const key = `${profileId}-${item.area_id}`;
+          const key = `${item.classroom_id}-${profileId}-${item.area_id}`;
           const allAreaComps = item.curricular_areas?.competencies?.map((c: any) => ({
             id: c.id.toString(),
             name: c.name
@@ -277,7 +286,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               // Required fields for AcademicLoad
               gradeSection: selectedSectionName || '',
               isTutor: false,
-              classroomId: Number(selectedSectionId) || 0,
+              classroomId: Number(item.classroom_id) || 0,
               areaId: item.area_id || 0
             });
           }
@@ -320,8 +329,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
 
   const getStudentAudit = (studentId: string) => {
-    // This now needs to use sectionCourses instead of MOCK_ACADEMIC_LOAD
-    return sectionCourses.map(course => {
+    const student = sectionStudents.find(s => s.id === studentId);
+    if (!student) return [];
+
+    // Filter courses assigned to either the student's regular classroom or their English classroom
+    const studentCourses = sectionCourses.filter(c =>
+      c.classroomId === student.classroomId ||
+      (student.englishClassroomId && c.classroomId === student.englishClassroomId)
+    );
+
+    return studentCourses.map(course => {
       // Use sectionGrades (local) instead of grades (prop)
       const comps = (course.competencies || []).map((c: any) => {
         const gradeEntry = sectionGrades.find((g) => g.studentId === studentId && g.competencyId === c.id.toString());
@@ -338,9 +355,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   };
 
   const getStatusForStudent = (studentId: string) => {
-    // This is simplified as we don't have persisted grades yet
-    // Just showing 0% or based on local state if any
-    const totalCompetencies = sectionCourses.reduce((acc, curr) => acc + (curr.competencies?.length || 0), 0);
+    const student = sectionStudents.find(s => s.id === studentId);
+
+    // Filter courses assigned to either the student's regular classroom or their English classroom
+    const studentCourses = sectionCourses.filter(c =>
+      student && (c.classroomId === student.classroomId ||
+        (student.englishClassroomId && c.classroomId === student.englishClassroomId))
+    );
+
+    const totalCompetencies = studentCourses.reduce((acc, curr) => acc + (curr.competencies?.length || 0), 0);
 
     // Avoid division by zero
     if (totalCompetencies === 0) return { progress: 0, isApproved: false, hasAppreciation: false };

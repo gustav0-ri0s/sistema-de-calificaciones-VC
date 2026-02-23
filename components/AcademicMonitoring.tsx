@@ -289,19 +289,26 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
         const mappedStudents = (students || []).map(s => ({
           id: s.id,
           fullName: `${s.last_name}, ${s.first_name}`,
-          classroomId: s.classroom_id || 0
+          classroomId: s.classroom_id || 0,
+          englishClassroomId: s.english_classroom_id || 0
         }));
         setSectionStudents(mappedStudents);
+
+        const relevantClassroomIds = Array.from(new Set([
+          selectedSectionId as number,
+          ...mappedStudents.map(s => isEnglishGroup ? s.classroomId : s.englishClassroomId).filter(id => id > 0)
+        ]));
 
         // Get Courses for Audit
         const { data: courses, error: cError } = await supabase
           .from('course_assignments')
           .select(`
               id,
+              classroom_id,
               curricular_areas ( name, competencies (id, name) ),
               profiles ( full_name )
            `)
-          .eq('classroom_id', selectedSectionId);
+          .in('classroom_id', relevantClassroomIds);
 
         if (cError) throw cError;
 
@@ -313,7 +320,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
           // Required fields for AcademicLoad
           gradeSection: selectedSectionName || '',
           isTutor: false,
-          classroomId: selectedSectionId || 0,
+          classroomId: c.classroom_id || 0,
           areaId: 0
         }));
         setSectionCourses(mappedCourses);
@@ -352,8 +359,15 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
 
 
   const getStudentAudit = (studentId: string) => {
-    // This now needs to use sectionCourses instead of MOCK_ACADEMIC_LOAD
-    return sectionCourses.map(course => {
+    const student = sectionStudents.find(s => s.id === studentId);
+    if (!student) return [];
+
+    const studentCourses = sectionCourses.filter(c =>
+      c.classroomId === student.classroomId ||
+      (student.englishClassroomId && c.classroomId === student.englishClassroomId)
+    );
+
+    return studentCourses.map(course => {
       // Use sectionGrades (local) instead of grades (prop)
       const comps = (course.competencies || []).map((c: any) => {
         const gradeEntry = sectionGrades.find((g) => g.studentId === studentId && g.competencyId === c.id.toString());
@@ -370,9 +384,15 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
   };
 
   const getStatusForStudent = (studentId: string) => {
-    // This is simplified as we don't have persisted grades yet
-    // Just showing 0% or based on local state if any
-    const totalCompetencies = sectionCourses.reduce((acc, curr) => acc + (curr.competencies?.length || 0), 0);
+    const student = sectionStudents.find(s => s.id === studentId);
+
+    // Filter courses assigned to either the student's regular classroom or their English classroom
+    const studentCourses = sectionCourses.filter(c =>
+      student && (c.classroomId === student.classroomId ||
+        (student.englishClassroomId && c.classroomId === student.englishClassroomId))
+    );
+
+    const totalCompetencies = studentCourses.reduce((acc, curr) => acc + (curr.competencies?.length || 0), 0);
 
     // Avoid division by zero
     if (totalCompetencies === 0) return { progress: 0, isApproved: false, hasAppreciation: false };
