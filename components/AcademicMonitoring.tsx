@@ -121,6 +121,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
           .from('classrooms')
           .select('id, grade, section, level, is_english_group')
           .eq('active', true)
+          .eq('is_english_group', false)
           .order('level', { ascending: false })
           .order('grade', { ascending: true })
           .order('section', { ascending: true });

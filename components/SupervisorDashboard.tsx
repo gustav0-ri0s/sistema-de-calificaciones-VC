@@ -99,6 +99,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           .from('classrooms')
           .select('id, grade, section, level')
           .eq('active', true)
+          .eq('is_english_group', false)
           .order('level', { ascending: false })
           .order('grade', { ascending: true })
           .order('section', { ascending: true });
