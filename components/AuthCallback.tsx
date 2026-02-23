@@ -1,12 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const AuthCallback = () => {
     const navigate = useNavigate();
 
+    const isProcessed = useRef(false);
+
     useEffect(() => {
         const handleAuth = async () => {
+            if (isProcessed.current) return;
+            isProcessed.current = true;
+
             const hash = window.location.hash;
             if (!hash) {
                 navigate('/');
@@ -29,6 +34,7 @@ const AuthCallback = () => {
                     console.error('Error setting session:', error);
                     navigate('/');
                 } else {
+                    localStorage.removeItem('vc_last_activity');
                     // Limpiar hash y redirigir
                     window.history.replaceState(null, '', window.location.pathname);
                     navigate(returnTo);
