@@ -22,7 +22,7 @@ const ALLOWED_ROLES = ['DOCENTE', 'DOCENTE_INGLES', 'SUPERVISOR', 'ADMIN', 'SUBD
 
 const IDLE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours in ms
 const CHECK_INTERVAL = 60 * 1000; // 1 minute in ms
-const ACTIVITY_KEY = 'vc_last_activity';
+const getActivityKey = (userId: string) => `vc_last_activity_${userId}`;
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -92,6 +92,8 @@ const App: React.FC = () => {
   // Idle Timeout Logic
   useEffect(() => {
     if (!userId) return;
+
+    const ACTIVITY_KEY = getActivityKey(userId);
 
     const checkIdleTimeout = () => {
       const lastActivity = localStorage.getItem(ACTIVITY_KEY);
@@ -552,12 +554,14 @@ const App: React.FC = () => {
     } catch (err) {
       console.error('Error during signOut:', err);
     }
+    if (userId) {
+      localStorage.removeItem(getActivityKey(userId));
+    }
     setUserId(null);
     setCurrentUserRole(null);
     setUserFullName('');
     setAcademicLoad([]);
     setBimestres([]);
-    localStorage.removeItem(ACTIVITY_KEY);
     window.location.href = `${PORTAL_URL}?view=login`;
   };
 
