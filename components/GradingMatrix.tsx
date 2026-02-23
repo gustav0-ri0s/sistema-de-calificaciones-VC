@@ -245,11 +245,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                         onChange={(e) => onUpdateFamilyEvaluation(student.id, fc.id, e.target.value as GradeLevel)}
                         className={`w-full p-3.5 rounded-xl border-none font-black text-sm text-center ${getGradeColorClass(getFamilyGrade(student.id, fc.id))}`}
                       >
-                        <option value="">Nota</option>
-                        <option value="AD">AD</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
+                        {renderGradeOptions('Nota')}
                       </select>
                     </div>
                   ))
