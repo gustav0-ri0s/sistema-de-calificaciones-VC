@@ -24,38 +24,146 @@ const SupervisorStatsDashboard: React.FC<SupervisorStatsProps> = ({ bimestre }) 
         const fetchStats = async () => {
             setLoading(true);
             try {
-                // 1. Total Students
-                const { count: studentCount } = await supabase
+                // 1. Get the academic year ID for this bimestre
+                const { data: bimestreData } = await supabase
+                    .from('bimestres')
+                    .select('academic_year_id')
+                    .eq('id', parseInt(bimestre.id))
+                    .single();
+
+                const yearId = bimestreData?.academic_year_id;
+
+                // 2. Total Students (Filtered by year)
+                let studentQuery = supabase
                     .from('students')
                     .select('*', { count: 'exact', head: true })
                     .eq('academic_status', 'matriculado');
 
-                // 2. Active Courses
-                const { count: courseCount } = await supabase
+                if (yearId) {
+                    studentQuery = studentQuery.eq('academic_year_id', yearId);
+                }
+
+                const { count: studentCount } = await studentQuery;
+
+                // 3. Active Courses (Filtered by year if possible)
+                let courseQuery = supabase
                     .from('course_assignments')
                     .select('*', { count: 'exact', head: true });
 
-                // 3. Pending Appreciations for current bimestre
+                if (yearId) {
+                    courseQuery = courseQuery.eq('academic_year_id', yearId);
+                }
+
+                const { count: courseCount } = await courseQuery;
+
+                // 4. Pending Appreciations for current bimestre
                 const { count: pendingApps } = await supabase
                     .from('student_appreciations')
                     .select('*', { count: 'exact', head: true })
                     .eq('bimestre_id', parseInt(bimestre.id))
                     .eq('is_approved', false);
 
-                // 4. Low Grades (C) for current bimestre - Approximate check
-                // This is heavy, so maybe just a count of rows with grade 'C'
+                // 5. Low Grades (C) for current bimestre
                 const { count: lowGrades } = await supabase
                     .from('student_grades')
                     .select('*', { count: 'exact', head: true })
                     .eq('bimestre_id', parseInt(bimestre.id))
                     .eq('grade', 'C');
 
+                // 6. Calculate GLOBAL Completion Rate
+                // This is an estimation for the dashboard:
+                // Sum(students_in_room * (competencies_in_room + static_slots))
+                let totalExpectedSlots = 0;
+                let totalFilledSlots = 0;
+
+                const { data: classrooms } = await supabase
+                    .from('classrooms')
+                    .select('id, is_english_group')
+                    .eq('active', true);
+
+                if (classrooms && classrooms.length > 0) {
+                    // Get all active competencies to map them to areas
+                    const { data: allCompetencies } = await supabase
+                        .from('competencies')
+                        .select('id, area_id');
+
+                    // Get all current grades count efficiently
+                    const { count: filledGrades } = await supabase
+                        .from('student_grades')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('bimestre_id', parseInt(bimestre.id));
+
+                    // Get all assignments to know which competencies are active for each room
+                    const { data: assignments } = await supabase
+                        .from('course_assignments')
+                        .select('classroom_id, area_id, competency_id')
+                        .eq('academic_year_id', yearId);
+
+                    // Get student count per classroom
+                    const { data: classStudentCounts } = await supabase
+                        .from('students')
+                        .select('classroom_id, id')
+                        .eq('academic_status', 'matriculado')
+                        .eq('academic_year_id', yearId);
+
+                    const studentsByClass = classStudentCounts?.reduce((acc: any, s) => {
+                        if (s.classroom_id) {
+                            acc[s.classroom_id] = (acc[s.classroom_id] || 0) + 1;
+                        }
+                        return acc;
+                    }, {});
+
+                    // Calculate denominator
+                    classrooms.forEach(room => {
+                        const roomStudents = studentsByClass[room.id] || 0;
+                        if (roomStudents === 0) return;
+
+                        // Filter assignments for this room
+                        const roomAssignments = assignments?.filter(a => a.classroom_id === room.id) || [];
+                        let roomCompetencies = 0;
+
+                        roomAssignments.forEach(attr => {
+                            if (attr.competency_id) {
+                                roomCompetencies += 1;
+                            } else {
+                                // All competencies for that area
+                                const areaComps = allCompetencies?.filter(c => c.area_id === attr.area_id).length || 0;
+                                roomCompetencies += areaComps;
+                            }
+                        });
+
+                        // Add static slots (Appreciation + Behavior + Values)
+                        // Family evaluation is 1 summary usually or per commitment. Let's keep it simple: Area Grades + 3 more.
+                        totalExpectedSlots += roomStudents * (roomCompetencies + 3);
+                    });
+
+                    // For the numerator, we take filled grades + approved appreciations + behavior records
+                    const { count: filledApps } = await supabase
+                        .from('student_appreciations')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('bimestre_id', parseInt(bimestre.id))
+                        .eq('is_approved', true);
+
+                    const { count: filledBehavior } = await supabase
+                        .from('student_behavior_grades')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('bimestre_id', parseInt(bimestre.id));
+
+                    // Behavior table has behavior_grade and values_grade. 
+                    // Let's assume each row counts as 2 slots if both filled.
+                    totalFilledSlots = (filledGrades || 0) + (filledApps || 0) + ((filledBehavior || 0) * 2);
+                }
+
+                const completionRate = totalExpectedSlots > 0
+                    ? Math.round((totalFilledSlots / totalExpectedSlots) * 100)
+                    : 0;
+
                 setStats({
                     totalStudents: studentCount || 0,
                     totalCourses: courseCount || 0,
                     pendingAppreciations: pendingApps || 0,
                     lowGradesCount: lowGrades || 0,
-                    completionRate: 45 // Mock for now, requires complex calc
+                    completionRate: Math.min(completionRate, 100)
                 });
 
             } catch (error) {
