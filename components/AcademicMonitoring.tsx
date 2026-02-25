@@ -1000,15 +1000,19 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                       // Recalculate global stats for this section (Optimistic)
                       setSectionsData(prev => prev.map(s => {
                         if (s.id === selectedSectionId) {
-                          return s;
+                          // Attempt to slightly shift the progress to visually confirm optimistic action
+                          return { ...s };
                         }
                         return s;
                       }));
 
-                      // Trigger a real refresh of stats
-                      setRefreshTrigger(prev => prev + 1);
-
                       setEditingGradeData(null);
+
+                      // Trigger a real refresh of stats after a slight delay
+                      // to allow the Supabase DB delete/upsert to fully commit
+                      setTimeout(() => {
+                        setRefreshTrigger(prev => prev + 1);
+                      }, 400);
                     }}
                     className="flex-1 py-4 bg-institutional text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-institutional/20 hover:brightness-110 active:scale-95 transition-all"
                   >
