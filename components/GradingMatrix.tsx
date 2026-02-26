@@ -64,11 +64,17 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   };
 
   const isConclusionMandatory = (grade: GradeLevel) => {
-    if (!course.level) return false;
+    if (!course.level || !grade) return false;
     const level = course.level.toUpperCase();
+
+    if (level.includes('INICIAL')) {
+      return grade === 'A' || grade === 'B' || grade === 'C';
+    }
+
     if (level.includes('PRIMARIA')) {
       return grade === 'B' || grade === 'C';
     }
+
     if (level.includes('SECUNDARIA')) {
       return grade === 'C';
     }
