@@ -355,7 +355,7 @@ const App: React.FC = () => {
 
       // If the teacher is a tutor but has no course_assignment in their tutor classroom,
       // inject a virtual entry so the tutoring module still appears
-      if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === Number(tutorClassroomId))) {
+      if (tutorClassroomId && !mappedLoad.some(load => load.classroomId === Number(tutorClassroomId) && load.isTutor)) {
         const { data: tutorClassroom } = await supabase
           .from('classrooms')
           .select('id, grade, section, level')
