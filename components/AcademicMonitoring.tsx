@@ -834,10 +834,18 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                               </button>
                             )}
                             {c.descriptiveConclusion && (
-                              <div className="flex items-center gap-1.5 px-2 py-1 bg-institutional/5 text-institutional rounded-lg border border-institutional/10">
+                              <button
+                                onClick={() => setEditingGradeData({
+                                  student: auditingStudent,
+                                  competencyId: c.id.toString(),
+                                  grade: c.grade as GradeLevel,
+                                  conclusion: c.descriptiveConclusion
+                                })}
+                                className="flex items-center gap-1.5 px-2 py-1 bg-institutional/5 text-institutional rounded-lg border border-institutional/10 hover:bg-institutional/15 hover:border-institutional/30 transition-all active:scale-95"
+                              >
                                 <MessageSquare size={10} />
                                 <span className="text-[8px] font-bold uppercase truncate max-w-[80px]">Ver C.</span>
-                              </div>
+                              </button>
                             )}
                           </div>
                         </div>
