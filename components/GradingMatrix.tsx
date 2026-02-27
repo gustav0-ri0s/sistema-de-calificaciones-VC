@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, Student, UserRole, FamilyCommitment, FamilyEvaluation } from '../types';
-import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus, RotateCw, Save } from 'lucide-react';
+import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus, RotateCw, Save, Trash2 } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
 import MassiveConclusionModal from './MassiveConclusionModal';
 import { generateGlobalReportCard } from '../utils/pdfGenerator';
@@ -169,6 +169,19 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     setShowMassiveConclusionModal(false);
   };
 
+  const handleClearAllGrades = () => {
+    if (window.confirm('¿Está seguro de limpiar TODAS las notas de esta sección? Esta acción vaciará las notas de todos los alumnos y no se puede deshacer.')) {
+      course.competencies.forEach(comp => {
+        students.forEach(student => {
+          const entry = grades.find(g => g.studentId === student.id && g.competencyId === comp.id);
+          if (entry && (entry.grade !== '' || entry.descriptiveConclusion !== '')) {
+            onUpdateGrade(student.id, comp.id, '' as GradeLevel, '');
+          }
+        });
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8">
       {/* Banner de bloqueo */}
@@ -188,13 +201,22 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
       {!bimestre.isLocked && (role === 'Docente' || role === 'Docente_Ingles') && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {!isTutorMode && !isFamilyMode && (
-            <button
-              onClick={() => setShowMassiveConclusionModal(true)}
-              className="px-5 py-2.5 bg-institutional text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-institutional/90 transition-all flex items-center gap-2 shadow-lg shadow-institutional/20 active:scale-95 w-fit"
-            >
-              <MessageSquare size={16} />
-              Conclusiones Masivas
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowMassiveConclusionModal(true)}
+                className="px-5 py-2.5 bg-institutional text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-institutional/90 transition-all flex items-center gap-2 shadow-lg shadow-institutional/20 active:scale-95 w-fit"
+              >
+                <MessageSquare size={16} />
+                Conclusiones Masivas
+              </button>
+              <button
+                onClick={handleClearAllGrades}
+                className="px-5 py-2.5 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-600 transition-all flex items-center gap-2 shadow-lg shadow-rose-500/20 active:scale-95 w-fit"
+              >
+                <Trash2 size={16} />
+                Limpiar Notas
+              </button>
+            </div>
           )}
 
           <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl animate-in fade-in slide-in-from-right-4 self-end md:self-auto ml-auto">
@@ -626,57 +648,58 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
           )}
         </div>
 
-        {activeConclusionData && (
-          <DescriptiveCommentModal
-            role={role}
-            student={activeConclusionData.student}
-            currentComment={activeConclusionData.conclusion}
-            isApproved={false}
-            isSent={true}
-            onClose={() => setActiveConclusionData(null)}
-            onSave={(val, shouldSend) => {
-              onUpdateGrade(
-                activeConclusionData.student.id,
-                activeConclusionData.competencyId,
-                activeConclusionData.grade,
-                val
-              );
-              if (shouldSend) setActiveConclusionData(null);
-            }}
-            isLocked={bimestre.isLocked}
-            title="Conclusiones Descriptivas"
-          />
-        )}
-
-        {activeCommentStudent && (
-          <DescriptiveCommentModal
-            role={role}
-            student={activeCommentStudent}
-            currentComment={getAppreciation(activeCommentStudent.id).comment}
-            isApproved={getAppreciation(activeCommentStudent.id).isApproved}
-            isSent={getAppreciation(activeCommentStudent.id).isSent}
-            onClose={() => setActiveCommentStudent(null)}
-            onSave={(val, shouldSend) => {
-              onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
-              if (shouldSend) setActiveCommentStudent(null);
-            }}
-            isLocked={bimestre.isLocked}
-            title="Apreciación Académica"
-          />
-        )}
-
-        {showMassiveConclusionModal && !isTutorMode && !isFamilyMode && (
-          <MassiveConclusionModal
-            role={role}
-            course={course}
-            students={students}
-            grades={grades}
-            onClose={() => setShowMassiveConclusionModal(false)}
-            onSave={handleMassiveUpdate}
-            isLocked={bimestre.isLocked}
-          />
-        )}
       </div>
+
+      {activeConclusionData && (
+        <DescriptiveCommentModal
+          role={role}
+          student={activeConclusionData.student}
+          currentComment={activeConclusionData.conclusion}
+          isApproved={false}
+          isSent={true}
+          onClose={() => setActiveConclusionData(null)}
+          onSave={(val, shouldSend) => {
+            onUpdateGrade(
+              activeConclusionData.student.id,
+              activeConclusionData.competencyId,
+              activeConclusionData.grade,
+              val
+            );
+            if (shouldSend) setActiveConclusionData(null);
+          }}
+          isLocked={bimestre.isLocked}
+          title="Conclusiones Descriptivas"
+        />
+      )}
+
+      {activeCommentStudent && (
+        <DescriptiveCommentModal
+          role={role}
+          student={activeCommentStudent}
+          currentComment={getAppreciation(activeCommentStudent.id).comment}
+          isApproved={getAppreciation(activeCommentStudent.id).isApproved}
+          isSent={getAppreciation(activeCommentStudent.id).isSent}
+          onClose={() => setActiveCommentStudent(null)}
+          onSave={(val, shouldSend) => {
+            onUpdateAppreciation(activeCommentStudent.id, val, shouldSend);
+            if (shouldSend) setActiveCommentStudent(null);
+          }}
+          isLocked={bimestre.isLocked}
+          title="Apreciación Académica"
+        />
+      )}
+
+      {showMassiveConclusionModal && !isTutorMode && !isFamilyMode && (
+        <MassiveConclusionModal
+          role={role}
+          course={course}
+          students={students}
+          grades={grades}
+          onClose={() => setShowMassiveConclusionModal(false)}
+          onSave={handleMassiveUpdate}
+          isLocked={bimestre.isLocked}
+        />
+      )}
     </div>
   );
 };
