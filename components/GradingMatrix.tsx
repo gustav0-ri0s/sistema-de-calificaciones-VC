@@ -55,6 +55,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     conclusion: string;
   } | null>(null);
   const [showConclusionAlert, setShowConclusionAlert] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
 
   const getGradeValue = (studentId: string, competencyId: string) => {
     return grades.find(g => g.studentId === studentId && g.competencyId === competencyId)?.grade || '';
@@ -179,16 +180,19 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   };
 
   const handleClearAllGrades = () => {
-    if (window.confirm('¿Está seguro de limpiar TODAS las notas de esta sección? Esta acción vaciará las notas de todos los alumnos y no se puede deshacer.')) {
-      course.competencies.forEach(comp => {
-        students.forEach(student => {
-          const entry = grades.find(g => g.studentId === student.id && g.competencyId === comp.id);
-          if (entry && (entry.grade !== '' || entry.descriptiveConclusion !== '')) {
-            onUpdateGrade(student.id, comp.id, '' as GradeLevel, '');
-          }
-        });
+    setShowClearConfirmModal(true);
+  };
+
+  const confirmClearAllGrades = () => {
+    course.competencies.forEach(comp => {
+      students.forEach(student => {
+        const entry = grades.find(g => g.studentId === student.id && g.competencyId === comp.id);
+        if (entry && (entry.grade !== '' || entry.descriptiveConclusion !== '')) {
+          onUpdateGrade(student.id, comp.id, '' as GradeLevel, '');
+        }
       });
-    }
+    });
+    setShowClearConfirmModal(false);
   };
 
   // Navegación tipo Excel entre celdas de notas
@@ -786,6 +790,40 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
               >
                 Entendido
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación: Limpiar todas las notas */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-br from-rose-500 to-rose-700 p-6 flex flex-col items-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 border-[3px] border-white/30 backdrop-blur-md shadow-inner">
+                <Trash2 className="text-white w-8 h-8" strokeWidth={2} />
+              </div>
+              <h3 className="text-white text-lg font-black tracking-tight text-center drop-shadow-sm">¿Limpiar todas las notas?</h3>
+              <p className="text-rose-100 text-xs font-medium text-center mt-1 opacity-80">Esta acción no se puede deshacer</p>
+            </div>
+            <div className="p-8">
+              <p className="text-slate-600 text-[13px] text-center font-medium leading-relaxed mb-8">
+                Se borrarán <strong className="text-slate-800">todas las calificaciones y conclusiones descriptivas</strong> de todos los estudiantes en esta sección.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowClearConfirmModal(false)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmClearAllGrades}
+                  className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-600 hover:-translate-y-0.5 transition-all shadow-xl shadow-rose-500/30 active:scale-95"
+                >
+                  Sí, limpiar
+                </button>
+              </div>
             </div>
           </div>
         </div>
