@@ -155,6 +155,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 .from('student_grades')
                 .select('id')
                 .in('student_id', studentsInClass)
+                .not('grade', 'is', null)
                 .eq('bimestre_id', parseInt(bimestre.id));
 
               if (totalSlots > 0 && gData) {
@@ -313,7 +314,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               studentId: g.student_id,
               courseId: '',
               competencyId: g.competency_id.toString(),
-              grade: g.grade as GradeLevel,
+              grade: (g.grade || '') as GradeLevel,
               descriptiveConclusion: g.descriptive_conclusion || ''
             })));
           }
@@ -370,7 +371,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     // Avoid division by zero
     if (totalCompetencies === 0) return { progress: 0, isApproved: false, hasAppreciation: false };
 
-    const studentGrades = sectionGrades.filter(g => g.studentId === studentId); // Local state check
+    const studentGrades = sectionGrades.filter(g => g.studentId === studentId && g.grade && g.grade !== ''); // Local state check
     const progress = Math.round((studentGrades.length / totalCompetencies) * 100);
     const appreciation = appreciations.find(a => a.studentId === studentId); // Local state check
 

@@ -91,6 +91,7 @@ const SupervisorStatsDashboard: React.FC<SupervisorStatsProps> = ({ bimestre }) 
                     const { count: filledGrades } = await supabase
                         .from('student_grades')
                         .select('*', { count: 'exact', head: true })
+                        .not('grade', 'is', null)
                         .eq('bimestre_id', parseInt(bimestre.id));
 
                     // Get all assignments to know which competencies are active for each room

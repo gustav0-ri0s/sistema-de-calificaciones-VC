@@ -188,6 +188,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                 .select('id, competencies!inner(curricular_areas!inner(active))', { count: 'exact', head: true })
                 .in('student_id', studentsInClass)
                 .eq('bimestre_id', parseInt(bimestre.id))
+                .not('grade', 'is', null)
                 .eq('competencies.curricular_areas.active', true);
 
               // 2. Behavior & Values
@@ -208,6 +209,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                 .from('family_evaluations')
                 .select('*', { count: 'exact', head: true })
                 .in('student_id', studentsInClass)
+                .not('grade', 'is', null)
                 .eq('bimestre_id', parseInt(bimestre.id));
 
               // 4. Appreciations (Comments)
@@ -436,7 +438,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
     // Avoid division by zero
     if (totalCompetencies === 0) return { progress: 0, isApproved: false, hasAppreciation: false };
 
-    const studentGrades = sectionGrades.filter(g => g.studentId === studentId); // Local state check
+    const studentGrades = sectionGrades.filter(g => g.studentId === studentId && g.grade && g.grade !== ''); // Local state check
     const progress = Math.round((studentGrades.length / totalCompetencies) * 100);
     const appreciation = appreciations.find(a => a.studentId === studentId); // Local state check
 

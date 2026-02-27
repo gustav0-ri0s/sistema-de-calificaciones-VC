@@ -845,7 +845,7 @@ const App: React.FC = () => {
         studentId: g.student_id,
         courseId: '',
         competencyId: g.competency_id.toString(),
-        grade: g.grade as GradeLevel,
+        grade: (g.grade || '') as GradeLevel,
         descriptiveConclusion: g.descriptive_conclusion || ''
       }));
 

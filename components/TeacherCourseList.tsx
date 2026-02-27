@@ -69,6 +69,7 @@ const TeacherCourseList: React.FC<TeacherCourseListProps> = ({ academicLoad, tut
                         .from('student_grades')
                         .select('*', { count: 'exact', head: true })
                         .eq('bimestre_id', parseInt(selectedBimestre!.id))
+                        .not('grade', 'is', null)
                         .in('student_id', studentIds)
                         .in('competency_id', competencyIds);
 
