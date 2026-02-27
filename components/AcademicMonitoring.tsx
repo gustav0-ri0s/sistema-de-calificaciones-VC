@@ -981,6 +981,10 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                       const compId = editingGradeData.competencyId;
                       const gradeVal = editingGradeData.grade;
                       const concVal = editingGradeData.conclusion;
+                      if (gradeVal === '' && concVal && concVal.trim() !== '') {
+                        alert('No se puede quitar la calificación mientras exista una conclusión descriptiva. Debe borrar la conclusión primero.');
+                        return;
+                      }
 
                       // Save to DB
                       await onUpdateGrade(

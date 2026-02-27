@@ -82,12 +82,20 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
   };
 
   const handleGradeChange = (student: Student, competencyId: string, grade: GradeLevel) => {
+    const currentConclusion = getGradeConclusion(student.id, competencyId);
+
     if (grade === '') {
+      if (currentConclusion.trim() !== '') {
+        alert('No se puede quitar la calificación mientras exista una conclusión descriptiva. Debe borrar la conclusión primero.');
+        // Reset select to previous value by triggering a state update with same values
+        const prevGrade = getGradeValue(student.id, competencyId);
+        onUpdateGrade(student.id, competencyId, prevGrade as GradeLevel, currentConclusion);
+        return;
+      }
       onUpdateGrade(student.id, competencyId, grade, '');
       return;
     }
 
-    const currentConclusion = getGradeConclusion(student.id, competencyId);
     // Auto-popup removed as per request. Visual indicator handles the "Mandatory" status.
     onUpdateGrade(student.id, competencyId, grade, currentConclusion);
   };
