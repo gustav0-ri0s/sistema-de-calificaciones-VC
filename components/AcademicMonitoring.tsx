@@ -804,7 +804,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                         <div key={i} className="flex items-center justify-between w-full bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
                           <span className="text-[10px] text-gray-600 font-bold">{c.name}</span>
                           <div className="flex flex-col items-end gap-1">
-                            {c.isFilled ? (
+                            {c.grade ? (
                               <button
                                 onClick={() => setEditingGradeData({
                                   student: auditingStudent,
@@ -825,7 +825,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                                   student: auditingStudent,
                                   competencyId: c.id.toString(),
                                   grade: '',
-                                  conclusion: ''
+                                  conclusion: c.descriptiveConclusion || ''
                                 })}
                                 className="flex items-center gap-1 hover:bg-gray-100 p-1 rounded-md transition-colors"
                               >
