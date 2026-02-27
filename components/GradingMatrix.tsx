@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { AcademicLoad, Bimestre, GradeEntry, AppreciationEntry, TutorValues, GradeLevel, Student, UserRole, FamilyCommitment, FamilyEvaluation } from '../types';
-import { MessageSquare, CheckCircle2, Info, Lock, Eye, Check, User, FileText, CheckCircle, Heart, Plus, RotateCw, Save, Trash2 } from 'lucide-react';
+import { MessageSquare, CheckCircle2, Info, Lock, Eye, AlertCircle, Check, User, FileText, CheckCircle, Heart, Plus, RotateCw, Save, Trash2 } from 'lucide-react';
 import DescriptiveCommentModal from './DescriptiveCommentModal';
 import MassiveConclusionModal from './MassiveConclusionModal';
 import { generateGlobalReportCard } from '../utils/pdfGenerator';
@@ -54,6 +54,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     grade: GradeLevel;
     conclusion: string;
   } | null>(null);
+  const [showConclusionAlert, setShowConclusionAlert] = useState(false);
 
   const getGradeValue = (studentId: string, competencyId: string) => {
     return grades.find(g => g.studentId === studentId && g.competencyId === competencyId)?.grade || '';
@@ -86,7 +87,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
     if (grade === '') {
       if (currentConclusion.trim() !== '') {
-        alert('No se puede quitar la calificación mientras exista una conclusión descriptiva. Debe borrar la conclusión primero.');
+        setShowConclusionAlert(true);
         // Reset select to previous value by triggering a state update with same values
         const prevGrade = getGradeValue(student.id, competencyId);
         onUpdateGrade(student.id, competencyId, prevGrade as GradeLevel, currentConclusion);
@@ -707,6 +708,31 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
           onSave={handleMassiveUpdate}
           isLocked={bimestre.isLocked}
         />
+      )}
+
+      {/* Modal estético de Alerta sobre Conclusión */}
+      {showConclusionAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-6 flex flex-col items-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 border-[3px] border-white/30 backdrop-blur-md shadow-inner">
+                <AlertCircle className="text-white w-8 h-8" strokeWidth={2.5} />
+              </div>
+              <h3 className="text-white text-lg font-black tracking-tight text-center drop-shadow-sm">Acción no permitida</h3>
+            </div>
+            <div className="p-8">
+              <p className="text-slate-600 text-[13px] text-center font-medium leading-relaxed mb-8">
+                No se puede vaciar la calificación mientras exista una <strong className="text-slate-800">conclusión descriptiva</strong> en este casillero. Por favor, <strong>borre el texto</strong> de la conclusión primero.
+              </p>
+              <button
+                onClick={() => setShowConclusionAlert(false)}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:-translate-y-0.5 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
