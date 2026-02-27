@@ -712,7 +712,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
 
       {/* Modal estético de Alerta sobre Conclusión */}
       {showConclusionAlert && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-6 flex flex-col items-center">
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 border-[3px] border-white/30 backdrop-blur-md shadow-inner">
