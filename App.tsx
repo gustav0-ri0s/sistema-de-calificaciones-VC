@@ -478,7 +478,7 @@ const App: React.FC = () => {
           studentId: g.student_id,
           courseId: courseId || selectedCourse?.id || '',
           competencyId: g.competency_id.toString(),
-          grade: g.grade as GradeLevel,
+          grade: (g.grade || '') as GradeLevel,
           descriptiveConclusion: g.descriptive_conclusion || ''
         })));
       }
@@ -583,26 +583,31 @@ const App: React.FC = () => {
     // Optimistic Update
     setGrades(prev => {
       const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
-      if (grade === '') return filtered;
-      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId: compIdStr, grade, descriptiveConclusion }];
+      if (grade === '' && (!descriptiveConclusion || descriptiveConclusion.trim() === '')) return filtered;
+      return [...filtered, { studentId, courseId: selectedCourse?.id || '', competencyId: compIdStr, grade, descriptiveConclusion: descriptiveConclusion || '' }];
     });
 
     try {
-      if (grade === '') {
-        const { error } = await supabase
-          .from('student_grades')
-          .delete()
-          .eq('student_id', studentId)
-          .eq('competency_id', parseInt(compIdStr))
-          .eq('bimestre_id', parseInt(selectedBimestre.id));
+      if (grade === '' && (!descriptiveConclusion || descriptiveConclusion.trim() === '')) {
+        // Just empty the row using upsert instead of delete
+        // This avoids issues where supervisors lack DELETE permissions but have UPDATE permissions
+        const { error } = await supabase.from('student_grades').upsert({
+          student_id: studentId,
+          competency_id: parseInt(compIdStr),
+          bimestre_id: parseInt(selectedBimestre.id),
+          grade: null,
+          descriptive_conclusion: '',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'student_id, competency_id, bimestre_id' });
+
         if (error) throw error;
       } else {
         const { error } = await supabase.from('student_grades').upsert({
           student_id: studentId,
           competency_id: parseInt(compIdStr),
           bimestre_id: parseInt(selectedBimestre.id),
-          grade: grade,
-          descriptive_conclusion: descriptiveConclusion,
+          grade: grade === '' ? null : grade,
+          descriptive_conclusion: descriptiveConclusion || '',
           updated_at: new Date().toISOString()
         }, { onConflict: 'student_id, competency_id, bimestre_id' });
 
@@ -627,15 +632,16 @@ const App: React.FC = () => {
     if (!selectedBimestre) return;
 
     if (grade === '') {
-      supabase.from('family_evaluations')
-        .delete()
-        .eq('student_id', studentId)
-        .eq('commitment_id', parseInt(commitmentId))
-        .eq('bimestre_id', parseInt(selectedBimestre.id))
-        .then(({ error }) => {
-          if (error) console.error('Error deleting family evaluation:', error);
-          else fetchProgressStats();
-        });
+      supabase.from('family_evaluations').upsert({
+        student_id: studentId,
+        commitment_id: parseInt(commitmentId),
+        bimestre_id: parseInt(selectedBimestre.id),
+        grade: null,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'student_id, commitment_id, bimestre_id' }).then(({ error }) => {
+        if (error) console.error('Error saving empty family evaluation:', error);
+        else fetchProgressStats();
+      });
     } else {
       supabase.from('family_evaluations').upsert({
         student_id: studentId,
@@ -754,8 +760,8 @@ const App: React.FC = () => {
         .upsert({
           student_id: studentId,
           bimestre_id: parseInt(selectedBimestre.id),
-          behavior_grade: behaviorGrade,
-          values_grade: valuesGrade,
+          behavior_grade: behaviorGrade === '' ? null : behaviorGrade,
+          values_grade: valuesGrade === '' ? null : valuesGrade,
           updated_at: new Date().toISOString()
         }, { onConflict: 'student_id, bimestre_id' });
 

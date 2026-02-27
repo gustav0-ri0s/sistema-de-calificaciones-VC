@@ -379,7 +379,7 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
               studentId: g.student_id,
               courseId: '',
               competencyId: g.competency_id.toString(),
-              grade: g.grade as GradeLevel,
+              grade: (g.grade || '') as GradeLevel,
               descriptiveConclusion: g.descriptive_conclusion || ''
             })));
           }
@@ -994,14 +994,14 @@ const AcademicMonitoring: React.FC<AcademicMonitoringProps> = ({
                       setSectionGrades(prev => {
                         const compIdStr = compId.toString();
                         const filtered = prev.filter(g => !(g.studentId === studentId && g.competencyId === compIdStr));
-                        if (gradeVal === '') return filtered;
+                        if (gradeVal === '' && (!concVal || concVal.trim() === '')) return filtered;
 
                         return [...filtered, {
                           studentId: studentId,
                           competencyId: compIdStr,
                           courseId: '',
                           grade: gradeVal,
-                          descriptiveConclusion: concVal
+                          descriptiveConclusion: concVal || ''
                         }];
                       });
 
