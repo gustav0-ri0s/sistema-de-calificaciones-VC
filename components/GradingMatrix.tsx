@@ -191,6 +191,44 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
     }
   };
 
+  // Navegación tipo Excel entre celdas de notas
+  const handleSelectKeyDown = (
+    e: React.KeyboardEvent<HTMLSelectElement>,
+    studentIdx: number,
+    compIdx: number
+  ) => {
+    const totalStudents = students.length;
+    const totalComps = course.competencies.length;
+    const focusSelect = (sIdx: number, cIdx: number) => {
+      const sel = document.querySelector<HTMLSelectElement>(
+        `select[data-si="${sIdx}"][data-ci="${cIdx}"]`
+      );
+      if (sel && !sel.disabled) {
+        e.preventDefault();
+        sel.focus();
+      }
+    };
+    switch (e.key) {
+      case 'Enter':
+        e.preventDefault();
+        if (studentIdx + 1 < totalStudents) focusSelect(studentIdx + 1, compIdx);
+        break;
+      case 'Tab':
+        if (!e.shiftKey) {
+          if (studentIdx + 1 < totalStudents) { e.preventDefault(); focusSelect(studentIdx + 1, compIdx); }
+        } else {
+          if (studentIdx - 1 >= 0) { e.preventDefault(); focusSelect(studentIdx - 1, compIdx); }
+        }
+        break;
+      case 'ArrowRight':
+        if (compIdx + 1 < totalComps) { e.preventDefault(); focusSelect(studentIdx, compIdx + 1); }
+        break;
+      case 'ArrowLeft':
+        if (compIdx - 1 >= 0) { e.preventDefault(); focusSelect(studentIdx, compIdx - 1); }
+        break;
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8">
       {/* Banner de bloqueo */}
@@ -228,9 +266,24 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl animate-in fade-in slide-in-from-right-4 self-end md:self-auto ml-auto">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Cambios se guardan automáticamente</span>
+          <div className="flex items-center gap-3 self-end md:self-auto ml-auto">
+            {!isTutorMode && !isFamilyMode && (
+              <div className="hidden md:flex items-center gap-1.5 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-tight">Teclado:</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-slate-600 text-[8px] shadow-sm font-mono leading-none">Tab</kbd>
+                <span className="text-slate-300 text-[9px]">↓ alumno</span>
+                <span className="text-slate-200 text-[9px]">|</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-slate-600 text-[8px] shadow-sm font-mono leading-none">← →</kbd>
+                <span className="text-slate-300 text-[9px]">competencia</span>
+                <span className="text-slate-200 text-[9px]">|</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-slate-600 text-[8px] shadow-sm font-mono leading-none">↑ ↓</kbd>
+                <span className="text-slate-300 text-[9px]">nota</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-6 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl animate-in fade-in slide-in-from-right-4">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Cambios se guardan automáticamente</span>
+            </div>
           </div>
         </div>
       )}
@@ -459,7 +512,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {students.map((student) => {
+                {students.map((student, studentIdx) => {
                   const appreciation = getAppreciation(student.id);
                   const tData = getTutorData(student.id);
 
@@ -507,7 +560,7 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                           );
                         })
                       ) : !isTutorMode ? (
-                        course.competencies.map((comp) => {
+                        course.competencies.map((comp, compIdx) => {
                           const grade = getGradeValue(student.id, comp.id);
                           const conclusion = getGradeConclusion(student.id, comp.id);
                           const isMandatory = isConclusionMandatory(grade);
@@ -520,7 +573,10 @@ const GradingMatrix: React.FC<GradingMatrixProps> = ({
                                   <select
                                     disabled={bimestre.isLocked || role === 'Supervisor'}
                                     value={grade}
+                                    data-si={studentIdx}
+                                    data-ci={compIdx}
                                     onChange={(e) => handleGradeChange(student, comp.id, e.target.value as GradeLevel)}
+                                    onKeyDown={(e) => handleSelectKeyDown(e, studentIdx, compIdx)}
                                     className={`w-full p-4 rounded-2xl border-none focus:ring-4 focus:ring-institutional/20 transition-all text-center font-black text-sm ${getGradeColorClass(grade)} ${bimestre.isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer appearance-none hover:shadow-md hover:scale-[1.02]'
                                       } text-transparent`}
                                   >
