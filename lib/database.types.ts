@@ -151,7 +151,7 @@ export type Database = {
             classrooms: {
                 Row: {
                     id: number
-                    level: 'inicial' | 'primaria' | 'secundaria'
+                    level: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
                     grade: string
                     section: string
                     active: boolean | null
@@ -161,7 +161,7 @@ export type Database = {
                 }
                 Insert: {
                     id?: number
-                    level: 'inicial' | 'primaria' | 'secundaria'
+                    level: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
                     grade: string
                     section: string
                     active?: boolean | null
@@ -171,7 +171,7 @@ export type Database = {
                 }
                 Update: {
                     id?: number
-                    level?: 'inicial' | 'primaria' | 'secundaria'
+                    level?: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
                     grade?: string
                     section?: string
                     active?: boolean | null
@@ -236,21 +236,21 @@ export type Database = {
                 Row: {
                     id: number
                     name: string
-                    level: 'inicial' | 'primaria' | 'secundaria'
+                    level: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
                     order: number | null
                     created_at: string | null
                 }
                 Insert: {
                     id?: number
                     name: string
-                    level: 'inicial' | 'primaria' | 'secundaria'
+                    level: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
                     order?: number | null
                     created_at?: string | null
                 }
                 Update: {
                     id?: number
                     name?: string
-                    level?: 'inicial' | 'primaria' | 'secundaria'
+                    level?: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
                     order?: number | null
                     created_at?: string | null
                 }
@@ -741,7 +741,7 @@ export type Database = {
             academic_status: 'activo' | 'trasladado' | 'retirado' | 'reserva' | 'matriculado' | 'sin_matricula'
             incident_status: 'registrada' | 'leída' | 'atención' | 'resuelta'
             incident_type: 'estudiante' | 'aula' | 'general'
-            school_level: 'inicial' | 'primaria' | 'secundaria'
+            school_level: 'inicial' | 'primaria' | 'secundaria' | 'inicial_2anos'
             user_role: 'docente' | 'supervisor' | 'admin' | 'subdirector' | 'auxiliar' | 'secretaria'
             year_status: 'abierto' | 'cerrado' | 'planificación'
         }
